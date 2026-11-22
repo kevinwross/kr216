@@ -35,7 +35,7 @@ This file is the live tracker. It owns tasks, evidence, gates and the running lo
 - [ ] The counts the document states match its own tables.
 - [ ] A review is reported with `BLOCKS` / `FIX-BEFORE` / `ERRATA` labels and evidence.
 
-**ARM64.** A change that is portable by construction still needs the ARM64 row at least once per milestone: build and test on BitWhiz, record the revision and counts. A row absent from CI is untested, not supported.
+**ARM64.** A change that is portable by construction still needs the ARM64 row at least once per milestone: build and test on BitWhiz over SSH, record the revision and counts. When BitWhiz is unreachable, the gate block names the row **not verified** rather than dropping it. A row absent from CI is untested, not supported.
 
 ## 3. Platforms, toolchain and hosts
 
@@ -43,7 +43,9 @@ This file is the live tracker. It owns tasks, evidence, gates and the running lo
 |---|---|---|---|
 | Windows x64 | the dev machine | MSVC 19.52.37029 for x64 (Visual Studio 18 Community); CMake 4.3.1-msvc1 and Ninja ship with that Visual Studio | primary development; the Windows gate row |
 | Linux x64 | WSL 2 on the dev machine | GCC and Clang, Ninja; versions recorded at the first build | the Linux gate rows, sanitizer row |
-| Linux ARM64 | **BitWhiz** (Raspberry Pi 5, Debian 13), reached remotely | GCC and Clang; versions recorded at the first build | the ARM64 gate row, at least once per milestone |
+| Linux ARM64 | **BitWhiz** (Raspberry Pi 5, Debian 13), reached over SSH | GCC and Clang; versions recorded at the first build | the ARM64 gate row, mandatory once per milestone |
+
+**ARM64 access.** SSH. The host or alias and user are recorded here once supplied (open, owner action); the build script's `arm64` path runs the Linux presets over that connection and captures the revision and counts for the gate block.
 
 **Discovered on 2026-11-21, on the Windows dev machine** (command and output in the running log):
 
@@ -65,7 +67,7 @@ Milestone scope and exit criteria are `kr216-plan.md` §16. This table tracks th
 | Milestone | This repository's deliverable | Exit criteria (from the plan) | Status |
 |---|---|---|---|
 | **M0** | plan, compiler contract mapped, ABI appendix started | D1–D34 resolved; Q1–Q29 answered | **complete** 2026-11-21 |
-| **M1** | `kr216-isa.md`, emulator including FPU, disassembler, KRO image loader, test harness | hand-written programs run and pass; every encoding has a vector; FP vectors are bit-exact | not started |
+| **M1** | `kr216-isa.md`, emulator including FPU, disassembler, KRO image loader, test harness | hand-written programs run and pass; every encoding has a vector; FP vectors are bit-exact; `kr216-isa.md` frozen at 1.0 | not started |
 | **M2** | VM wiring for krld output; loader against real krcompiler images; `kr216-emu`/`kr216-dis` CLIs | `krc --target=kr216` output links and runs here; round-trip and determinism pass | not started |
 | **M3** | execution of compiler-generated C: ABI (frames, calls, ENTER/LEAVE), differential runs | C programs run and match host output | not started |
 | **M4** | machine-level debug interface (step, run, memory, unwind), KDBG payload handling, console/COM mapping | krdbg drives the emulator; backtraces match expected frames | not started |
@@ -90,6 +92,8 @@ Milestone scope and exit criteria are `kr216-plan.md` §16. This table tracks th
 - [ ] `CMakeLists.txt`: C++20, `/W4 /WX` on MSVC and `-Wall -Wextra -Wpedantic -Werror` elsewhere, CTest enabled.
 - [ ] `CMakePresets.json` with the five presets in §3; each preset's binary directory separate.
 - [ ] `build.cmd` as specified in §3, resolving `vswhere` → `vcvars64.bat` → bundled CMake/Ninja.
+- [ ] `build.cmd arm64`: SSH to BitWhiz, run `linux-gcc-debug` and `ctest` there, capture the revision and counts for the gate block.
+- [ ] BitWhiz SSH host or alias and user recorded in §3 (owner supplies them).
 - [ ] `.agents/doctor.msvc.ps1` (from `.agents/templates/`) reporting MSVC, CMake and Ninja with versions.
 - [ ] `.gitignore` covering `build/`, `out/`, and CMake user files.
 - [ ] One placeholder test registered with CTest so the entry point proves green from the first commit.
@@ -125,7 +129,7 @@ Milestone scope and exit criteria are `kr216-plan.md` §16. This table tracks th
 
 **M1.4 Image loader** (`include/kr216/image.h`, `src/image.cpp`)
 
-- [ ] Parse the KRCompiler image container (D33): magic, target/ABI version, sections, entry, image base, embedded KDBG payload; reject a wrong target ID or ABI version.
+- [ ] Parse the KRCompiler image container against its written layout (compiler ADR 0054): magic, target/ABI version, sections, entry, image base, embedded KDBG payload; reject a wrong target ID or ABI version. Until that ADR lands, the fixture layout built from its draft stands in.
 - [ ] Reject out-of-range sections and overlapping placements; never write outside the 64 KiB map.
 - [ ] `reset()` reloads the last image and clears state.
 
@@ -144,6 +148,7 @@ Milestone scope and exit criteria are `kr216-plan.md` §16. This table tracks th
 - [ ] `frames/` — `ENTER`/`LEAVE` for frame sizes 0–255 and every legal mask, nesting, `alloca`, tail call.
 - [ ] `fuzz/` — random byte streams decode or trap, never crash, never read out of bounds.
 - [ ] `traps/` — every vector, the frame layout, `IRET`, trace.
+- [ ] Freeze `kr216-isa.md` at 1.0 when every vector passes, recording the freeze in the ISA header and the log.
 
 ### M2 — the compiler's images run here
 
@@ -163,11 +168,12 @@ Milestone scope and exit criteria are `kr216-plan.md` §16. This table tracks th
 - [ ] Machine-level interface for `krdbg` `IDebugTarget`: step, budgeted run, halted/fault states, layout, register and memory access, disassembly, unwind, retired-instruction count, reset.
 - [ ] Console maps to the `out`/`in`/`status` COM contract; `video()` reports absent.
 - [ ] Backtrace through a known call chain matches expected frames (`frame = 0`, return PC at `FP + 2`).
-- [ ] krdbg's variable-length disassembly change is a prerequisite, owned upstream (Q23).
+- [ ] krdbg's variable-length disassembly change has landed upstream; it was raised there in 2026-11 rather than waiting for this milestone (§8, Q23).
 
 ### M5 — exceptions execute
 
-- [ ] Execute the 16-bit exception descriptors once the compiler-side ADR (0054) and runtime exist; `has_eh` turns on there, not here.
+- [ ] The 16-bit EH descriptor ADR (0055) exists on the compiler side before any M5 test runs.
+- [ ] Execute the 16-bit exception descriptors once that ADR and the runtime exist; `has_eh` turns on there, not here.
 - [ ] Unwinding test: a throw across one to five frames runs every destructor once, in order, and lands in the right handler with SP/FP correct.
 
 ### M6 — density and performance
@@ -234,14 +240,33 @@ linux-sanitize      PASS <n>/<n>
 
 A row that does not run is named as not verified. A count that differs from another row is explained in prose beside the block.
 
-## 8. Open items and risks
+## 8. Resolved items and remaining risks
 
-- **ISA draft, not frozen.** The encodings are normative from draft 0.2, but the emulator will disagree with the document somewhere in the first thousand vectors. When it does, decide which is right, fix both, and log it.
-- **Image format dependency.** The loader (M1.4) is written against D33's container, which the compiler's image writer produces at its M2. Until then the loader is tested against hand-built images.
-- **krdbg's variable-length change** (Q23) gates M4 and lives upstream in `..\krdbg`.
-- **16-bit EH descriptor** (ADR 0054) is not written; `has_eh` is false and M5 is blocked until the compiler side lands.
-- **BitWhiz reachability.** The ARM64 row is remote; if the machine is unreachable when a milestone closes, the gate records it as not verified rather than skipping silently.
-- **Toolchain path fragility.** CMake and Ninja are not on `PATH` and the installed Visual Studio is newer than any generator this CMake knows; `build.cmd` exists so that no task composes a build command from memory.
+Each item was open in this tracker's first draft; the owner resolved all seven on 2026-11-21. The resolution is now a rule above or a task in §5.
+
+| Item | Resolution | Lands in |
+|---|---|---|
+| When the ISA stops being a draft | **Freeze 1.0 when the M1.6 vector harness is green.** After that a change is a numbered ISA revision under the plan's change policy. | M1 exit criteria, §5 M1.6 |
+| Who writes the image container's byte layout | **The compiler does, now:** a krcompiler ADR (0054) plus a `docs/object.md` section; this repository's loader implements it. | §5 M1.4; external task |
+| krdbg's fixed disassembly alignment | **Raise the krdbg change upstream now**, not at M4. It is a `TargetLayout` plus row-advance change, and M4 must not begin on an unfixed dependency. | §5 M4; external task |
+| The 16-bit exception descriptor | **ADR 0055 after M1–M2, before M5**; `has_eh` stays false until then. Renumbered from 0054 because the image container takes the next free number. | §5 M5; external task |
+| How binding the ARM64 row is | **Mandatory once per milestone**; when BitWhiz is unreachable the gate names the row not verified rather than dropping it. | §2, §7 |
+| How this machine reaches BitWhiz | **SSH**, host and user recorded in §3; the build script runs the Linux presets there and the gate block is written from its output. | §3, §5 M1.1 |
+| How the Windows build finds its tools | **`build.cmd`** resolves `vswhere` → `vcvars64` → bundled CMake and Ninja. | §3, §5 M1.1 |
+
+**External tasks.** Owned in another repository, tracked in its tracker; this table records the dependency.
+
+| Task | Repository | Status |
+|---|---|---|
+| Image container ADR 0054 plus a `docs/object.md` section, writing D33's byte layout | `..\krcompiler` | not started |
+| 16-bit exception descriptor ADR 0055 | `..\krcompiler` | deferred to after M1–M2 |
+| Variable-length disassembly rows (`TargetLayout` plus the surface's row advance) | `..\krdbg` | not started; raise in 2026-11 |
+
+**Remaining risks.**
+
+- **ISA drift while M1 is built.** The encodings are normative from draft 0.2, but the emulator will disagree with the document somewhere in the first thousand vectors. When it does, decide which is right, fix both, and log it.
+- **BitWhiz availability** at a milestone close. The gate records the row as not verified; it never silently drops it.
+- **Toolchain fragility.** A Visual Studio upgrade can move the bundled CMake or change the MSVC version; the doctor reports versions so a gate names what actually ran.
 
 ## 9. Running log
 
@@ -249,3 +274,4 @@ A row that does not run is named as not verified. A count that differs from anot
 - **2026-11-21T21:48:36-08:00** — *(backfilled; timestamp from commit `bbcaf6f`)* `kr216-isa.md` draft 0.1 written and committed: length map, five classes, `F0`–`F8`, semantics, traps, `SYS`, MMIO, 60 vectors, and the 16-decision register in §15. Not run: no build exists.
 - **2026-11-21T21:48:41-08:00** — *(backfilled; timestamp from commit `4b96bca`)* Compiler-side registration pushed: ADR 0053 (renumbered from 0052 after the rebase), `docs/abi-kr216.md`, schema v2, D-050, and the indexes. Linux/ARM64 rows not applicable: documentation only.
 - **2026-11-21T22:04:42-08:00** — §15's sixteen decisions approved by the owner and the approval recorded in the ISA header; this tracker created. Toolchain discovery on the Windows dev machine: `vswhere` found Visual Studio 18 Community (18.12.1), `cl` is 19.52.37029 for x64 after `vcvars64.bat`, CMake is the bundled 4.3.1-msvc1 (not on `PATH`, newest Visual Studio generator `Visual Studio 17 2022`), and Ninja ships beside it. Consequence recorded in §3: the Windows build uses Ninja inside `vcvars64`. No build or test run — there is no source tree yet.
+- **2026-11-21T22:28:10-08:00** — Open items resolved by the owner: the ISA freezes 1.0 at M1 exit; the image container's byte layout becomes compiler ADR 0054 (so the EH descriptor is renumbered 0055); the krdbg change is raised upstream now; the ARM64 row is mandatory per milestone with BitWhiz reached over SSH; the Windows build uses `build.cmd`. §8 now records the resolutions and the external tasks; §5 gained the corresponding tasks in M1.1, M1.4, M1.6, M4 and M5. Not run: no build exists.

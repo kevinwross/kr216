@@ -79,8 +79,23 @@ Target-specific notes:
 
 ## Architecture boundaries
 
-<!-- What may depend on what. Name the forbidden directions explicitly. -->
-- `<layer A>` may depend on `<layer B>`. The reverse is forbidden.
+Two source trees, and **the compiler that builds each is the boundary**:
+
+- `src/` — **host** code: the emulator, FPU, memory system, decoder, disassembler, image
+  loader, machine-level debug interface and the CLI tools. Built by the host toolchain
+  (MSVC on Windows, GCC/Clang in WSL and on BitWhiz) through CMake. It MUST NOT include a
+  header from `src216/` and MUST NOT link object code compiled for kr216.
+- `src216/` — **guest** code: programs, fixtures and guest-side test scaffolding compiled by
+  `krc` with `--target=kr216` and the installed sysroot. It MUST NOT include a host header,
+  and it is never added to the CMake host build.
+- `tests/` — host-side CTest harness. It reads guest images produced from `src216/`, but it
+  is host code.
+- The kr216 runtime (`crt0`, libc, exception runtime) is not in either tree: it lives in
+  `..\krcompiler\targets\kr216\` (D32). `src216/` is this repository's guest programs only.
+
+The host build excludes `src216/` explicitly and a boundary check rejects a cross-tree
+include, so a mistake fails at configure or build rather than becoming a link error or a
+guest binary that quietly contains host code.
 
 ## Environment
 

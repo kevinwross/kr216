@@ -110,6 +110,8 @@ if(KRC_EXECUTABLE AND KRLD_EXECUTABLE)
         "${CMAKE_SOURCE_DIR}/src216/long_long_shift_dynamic.c" 42 "")
     add_guest_program_test(guest_long_long_mul
         "${CMAKE_SOURCE_DIR}/src216/long_long_mul.c" 42 "")
+    add_guest_program_test(guest_long_long_div
+        "${CMAKE_SOURCE_DIR}/src216/long_long_div.c" 42 "")
     add_guest_program_test(guest_signed_div
         "${CMAKE_SOURCE_DIR}/src216/signed_div.c" 42 "")
     add_test(NAME guest_init_array

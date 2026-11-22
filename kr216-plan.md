@@ -2,9 +2,9 @@
 
 | | |
 |---|---|
-| Status | Draft — 29 of 30 decisions accepted; Q20–Q23 (compiler and debugger integration) open |
-| Version | 0.8 |
-| Date | 2026-11-21T20:08:53-08:00 |
+| Status | Draft — all 32 decisions accepted; no open questions |
+| Version | 0.9 |
+| Date | 2026-11-21T20:16:10-08:00 |
 | Scope | CPU architecture and the C++ platform it has to support |
 | Follow-on documents | `kr216-isa.md` (normative encodings), `docs/abi-kr216.md` (in the compiler repo), `kr216-cpp.md`, `kr216-toolchain.md` |
 
@@ -22,6 +22,7 @@
 | 0.6 | 2026-11-21T14:24:17-08:00 | D5, D6, D8–D12, D16 and D22 accepted as specified. All 26 decisions are now Accepted; Q19 (krcompiler's target contract) is the only open question. |
 | 0.7 | 2026-11-21T19:53:51-08:00 | Read `..\krcompiler\plan.md` and the target guide: Q19 answered; section 12 rewritten around the five target layers (profile, descriptor, assembler/KRO, backend, runtime/VM); object format moves from ELF32 to KRO with target ID 4; vtable/RTTI aligned to ADR 0025 scaled to 2-byte words; exception integration and its 16-bit gap recorded; D27–D29 added; Q20–Q22 opened |
 | 0.8 | 2026-11-21T20:08:53-08:00 | Read `..\krdbg\docs\new-dbg-target-guide.md`: new section 11.8 on the debugger/VM interface; FP made mandatory for the KDBG frame convention; console reshaped to krdbg's out/in/status COM contract; the fixed-instruction-alignment gap recorded as Q23; D30 added; krdbg adapter added to the component table |
+| 0.9 | 2026-11-21T20:16:10-08:00 | D29 accepted; Q20–Q23 resolved: long double aliases double, the descriptor gains a `this_register`, landing pads use R2/R3, descriptors exist only for functions with protected regions, and krdbg gains variable-length disassembly. D31 (KDBG in-image, matching KR32) and D32 (compiler-side work lives in the krcompiler repo) added. All 32 decisions accepted |
 
 This is a plan, not a specification. It records what has been decided, why, and what is still
 open. Exact encodings, operand-mode tables and relocation formats belong in `kr216-isa.md`;
@@ -662,7 +663,7 @@ built from 16×16 partial products. That is the standard cost on a 16-bit machin
 | `long long` | 8 | 2 | 64-bit division is a runtime helper |
 | `float` | 4 | 2 | stored as binary32; widened to binary64 on load |
 | `double` | 8 | 2 | binary64; lives in F0–F3 for arithmetic |
-| `long double` | — | — | unsupported; the compiler profile would set `long_double_bits = 0` (Q20) |
+| `long double` | 8 | 2 | alias for `double` (Q20) |
 | pointer, reference, member pointer | 2 | 2 | 64 KiB address space |
 | `size_t`, `ptrdiff_t` | 2 | 2 | 16-bit; container sizes max 65535 |
 | `intmax_t` | 8 | 2 | follows `long long` |
@@ -709,8 +710,8 @@ stack, each integer slot 2 bytes and each FP slot 8 bytes.
 `this` in R10 is caller-saved, so a member function that calls another member and then still
 needs its own `this` must preserve it — in R8/R9 or a stack slot. That is the price of freeing
 the first argument register; it is accepted (Q13), and the alternative is recorded there. The
-compiler's descriptor schema has no dedicated `this` register today; whether it gains one or
-kr216 falls back to passing `this` as argument 0 is Q21.
+compiler descriptor gains a `this_register` field (Q21), so R10 is a declared part of the
+target's calling convention rather than an informal convention.
 
 Variadic and unprototyped functions take *all* arguments on the stack (the old ARM APCS
 rule), including floating point. This keeps `va_start` trivial — a pointer to the first stack
@@ -843,8 +844,11 @@ records the function's PC range, its frame size and saved-register mask, a call-
 (PC range → landing pad, cleanup flag, action), and a type table for `catch` matching. The
 unwinder walks the FP chain, looks up each frame's PC (the throw site for the innermost frame,
 the return address for callers), restores the frame's saved registers from the entry, and
-either transfers to a landing pad (cleanup or catch) or moves on. A landing pad runs with its
-own frame still intact, which is what lets it destroy locals in place.
+either transfers to a landing pad (cleanup or catch) or moves on. A landing pad receives the
+exception object in **R2** and its typeinfo in **R3** (Q22), so it starts with both values in
+registers, and it runs with its own frame still intact, which is what lets it destroy locals in
+place. Entries exist only for functions with protected regions; the FP chain walks everything
+else.
 
 `ENTER` is therefore a pure frame instruction: it never touches EFP, and a function with no
 cleanup and no `catch` needs no exception table entry at all — the FP chain is enough to walk
@@ -870,18 +874,18 @@ cleanup landing pads. That is the model this section describes, but the concrete
 `R7 + frame + 4`, the exception pointer and typeinfo in R0/R1, and a frame size in every
 descriptor because that chain cannot be walked without it.
 
-kr216 needs a 16-bit sibling of that format: 16-bit descriptor fields, an FP-chain walk
-(`[FP]` is the caller's FP, `[FP+2]` the return address), SP restoration from the frame size and
-saved-register mask, a landing-pad register convention that does not use R0/R1 (they are
-constants), and an eight-byte exception header (four 2-byte words) instead of sixteen. That is a
-new ADR in KRCompiler plus `docs/abi-kr216.md`, not a decision this plan can make on its own
-(Q22). Until it exists, `has_eh` is false for the kr216 profile and the compiler refuses
+kr216 uses a 16-bit sibling of that format (Q22 resolved): 16-bit descriptor fields, an FP-chain
+walk (`[FP]` is the caller's FP, `[FP+2]` the return address), SP restoration from the frame size
+and saved-register mask, **R2 = exception object and R3 = typeinfo** in a landing pad, an
+eight-byte exception header (four 2-byte words) instead of sixteen, and descriptors only for
+functions with protected regions. That is a new ADR in KRCompiler plus `docs/abi-kr216.md`.
+Until it exists, `has_eh` is false for the kr216 profile and the compiler refuses
 `try`/`catch`/`throw` on the target, exactly as it does for KR16 today.
 
 One inherited assumption does not survive: ADR 0026 emits a descriptor for *every* function
-because the KR32 unwinder needs its frame size. With an FP chain, kr216 can walk without one;
-whether the compiler will omit descriptors for functions with no protected region is part of
-Q22.
+because the KR32 unwinder needs its frame size. With an FP chain, kr216 can walk without one,
+so the 16-bit format omits descriptors for functions with no protected region; the unwinder
+treats a missing entry as "no landing pad, keep walking".
 
 If `krcompiler` nonetheless needs a frame-chain model (Q18), `ENTER` would grow a handler
 operand and link an EFP frame, and the tables would disappear. The ISA keeps `F9`–`FF` reserved
@@ -970,14 +974,16 @@ unwinder and the debugger both read `[FP]`.
 the disassembly surface advances rows by it; `InstructionView::length` is used only to size the
 byte column. That contract is correct for KR32 and KR16 and wrong for kr216, whose instructions
 are 1–6 bytes. The adapter cannot fix it: the change belongs in `krdbg` (`TargetLayout` plus the
-surface's row advance, so it steps by the returned length). It is a prerequisite for the M4
-debug milestone, tracked as Q23.
+surface's row advance, so it steps by the returned length). Q23 resolves it that way, and the
+change is a prerequisite for the M4 debug milestone.
 
-**Debug information and loading.** The kr216 image carries a KDBG payload (target ID 4). The
-vendored reader recognises only the KR32 `.k32` and KR16 `.kex` containers; for any other
-container the adapter calls `read_payload` and checks `image_base` itself. The image writer must
-therefore embed the payload and define the base it was built for. Container support belongs
-upstream in KRCompiler and is re-vendored, not patched in krdbg.
+**Debug information and loading.** The kr216 image carries a KDBG payload (target ID 4), in the
+image by default, matching KR32; `krld --debug-file` may still write an optional sidecar, which
+is worth it only for a very small image. The vendored reader recognises only the KR32 `.k32`
+and KR16 `.kex` containers; for the kr216 container the adapter extracts the payload and calls
+`read_payload`, checking `image_base` itself. The image writer must therefore define the base
+the payload was built for. Container support belongs upstream in KRCompiler and is re-vendored,
+not patched in krdbg.
 
 **What is not required.** krdbg sets breakpoints by comparing `pc()` against an address set and
 single-steps by calling `step_instruction`; it does not use a breakpoint instruction or a trap
@@ -1015,12 +1021,14 @@ fields and 16-bit target addresses. Sections: `.text`, `.rodata`, `.data`, `.bss
 `.init_array`, `.fini_array`, and `.cpp_except` for the exception descriptors; debug information
 travels in KDBG (also target ID 4). Relocations are the common absolute and PC-relative
 families, plus kr216 branch relaxation between `CALL rel9` and `CALL addr16`. The image the
-emulator loads is the image writer's flat output, not ELF.
+emulator loads is a KRCompiler image container, not ELF; like KR32's `.k32`, it carries the
+sections and a KDBG payload, so the debugger gets debug information from the same file it runs
+(D31). `krld --debug-file` can still split the payload into a sidecar for a very small image.
 
-The image carries a KDBG payload (target ID 4) and a defined `image_base`. Because the vendored
-KDBG reader recognises only the KR32 `.k32` and KR16 `.kex` containers, the kr216 debug adapter
-loads the payload with `read_payload` and checks `image_base` itself; container support belongs
-upstream in KRCompiler, not in a patched reader (section 11.8).
+Because the vendored KDBG reader recognises only the KR32 `.k32` and KR16 `.kex` containers, the
+kr216 debug adapter extracts the payload from the kr216 container, calls `read_payload`, and
+checks `image_base` itself; container support belongs upstream in KRCompiler, not in a patched
+reader (section 11.8).
 
 ### 12.2 kr216 as a KRCompiler target
 
@@ -1044,6 +1052,11 @@ target ID are frozen contracts: the first commit for a new target is an ADR, a `
 decision-log entry and `docs/abi-kr216.md`, plus a failing test — not a backend. That is the
 sequence kr216 has to follow.
 
+The compiler-side work — the data-model ADR, the `this_register` schema change, the 16-bit EH
+descriptor, `docs/abi-kr216.md` and the backend — lives in the krcompiler repository (D32).
+This repository owns the ISA, the emulator and the integration tests that prove the two halves
+agree.
+
 **Descriptor values the target will declare.**
 
 | Field | Value |
@@ -1052,7 +1065,7 @@ sequence kr216 has to follow.
 | data model | IP16 with `long` 32 and `long long` 64 (a new profile value, not `Ip16`) |
 | `char` | 8, signed |
 | `short` / `int` / `long` / `long long` | 2 / 2 / 4 / 8; align 2 |
-| `float` / `double` / `long double` | 4 / 8 / 0 (Q20) |
+| `float` / `double` / `long double` | 4 / 8 / 8 (alias) |
 | `size_t` / `ptrdiff_t` / `intmax_t` / `wchar_t` | 2 / 2 / 8 / 2 |
 | integer arguments / return | R2–R5 / R2 (R2:R3 for 32-bit) |
 | FP arguments / return | F0–F1 / F0 |
@@ -1061,20 +1074,20 @@ sequence kr216 has to follow.
 | stack alignment / public-call alignment | 2 / 2 |
 | aggregate rules | `MemoryOnly` initially (sret pointer in R2) |
 | capabilities | `has_fpu` and `has_cpp`; no matrix, atomics, threads or TLS; `has_eh`/`has_rtti` only after the 16-bit EH format exists |
-| `this` | R10 (see the gap below) |
+| `this` | R10, declared by the descriptor's new `this_register` field |
 
-**Gaps that need an upstream decision before the target can be complete.**
+**Upstream changes that must land before the target is complete.**
 
 1. **Data-model enum.** `data_model` is `Ilp32`/`Ip16`/`Lp64`; kr216's IP16-with-32-bit-`long`
-   model is a fourth value. That is an ADR 0002 change (profile schema freeze).
-2. **The `this` register.** `RegisterInfo` carries `role`, `callee_saved` and
-   `argument_index` — there is no slot for a dedicated `this` register. Either the descriptor
-   gains one (ADR), or kr216 passes `this` as argument 0 like KR16 and D17 has to move (Q21).
+   model is a fourth value. That is an ADR 0002 change (D29).
+2. **The `this` register.** The descriptor gains a `this_register` field (Q21 resolved);
+   `RegisterInfo` still needs the field and the backend must set R10 at member call sites.
 3. **Exception descriptors.** ADR 0026's format is 32-bit-specific: 32-bit fields, an R7 frame
    walk, the return address at `R7 + frame + 4`, exception pointer and typeinfo in R0/R1, and a
-   frame size in every descriptor. kr216 needs 16-bit fields, an FP-chain walk, landing-pad
-   registers that are not R0/R1, and an eight-byte exception header. That is a new ADR plus the
-   kr216 ABI appendix, and it is what turns `has_eh` on (Q22).
+   frame size in every descriptor. kr216 uses 16-bit fields, an FP-chain walk, R2/R3 for the
+   landing pad, an eight-byte header, and descriptors only for functions with protected regions
+   (Q22 resolved). That is a new ADR plus the kr216 ABI appendix, and it is what turns `has_eh`
+   on.
 4. **Narrow-target literal typing.** The guide records a live defect: with a 16-bit `int`,
    `long x = 32768;` is rejected even though `long` is 32 bits. kr216 inherits it; it must be
    fixed in the front end before arithmetic fixtures are meaningful.
@@ -1181,10 +1194,12 @@ runtime or debug format quietly assumed 32-bit words.
 | D26 | Register class: `LD Rd,#imm16`, `LD Rd,[addr16]`, `ST [addr16],Rd` are 3 bytes with the register in the opcode byte; paid for by demoting `CLR` (alias of `MOV Rd,R0`) and `JMP Rd` (compact op 31); the 4-byte Long class is retired and its remaining ops move to the `F1` escape | Accepted |
 | D27 | kr216 is a KRCompiler target: a profile row, descriptor, assembler/encoder + KRO writer, backend, `targets/kr216` runtime, `sysroot/kr216`, and this repository's emulator as the VM (target ID 4). No separate assembler or linker | Accepted |
 | D28 | Vtable/typeinfo layout follows ADR 0025 scaled to 2-byte words: `_ZTV` = `[typeinfo, slot 0, ...]`, vptr = `_ZTV+2`, typeinfo at `vptr-2`, weak globals, RTTI always emitted for polymorphic classes | Accepted |
-| D29 | Data-model profile: `int` 16, `long` 32, `long long` 64, pointer 16, plain `char` signed, align 2, aggregates memory-class; this is a new profile value (IP16 with 32-bit `long`) and needs an ADR 0002 change upstream | Proposed |
+| D29 | Data-model profile: `int` 16, `long` 32, `long long` 64, pointer 16, plain `char` signed, align 2, aggregates memory-class; this is a new profile value (IP16 with 32-bit `long`) and needs an ADR 0002 change upstream | Accepted |
 | D30 | Debug/VM contract: FP is maintained in every function (KDBG `frame = 0`, return PC at `FP+2`, locals negative); the image carries a KDBG payload with a defined `image_base`; the console maps to krdbg's `out`/`in`/`status` COM contract; the VM exposes a monotonic instruction counter | Accepted |
+| D31 | KDBG payloads are embedded in the image by default, matching KR32's in-image pattern; `krld --debug-file` may write an optional sidecar, which is the preferred form only for very small images | Accepted |
+| D32 | Compiler-side work — the data-model ADR, `this_register` schema change, 16-bit EH descriptor, `docs/abi-kr216.md` and the backend — lives in the krcompiler repository; this repository owns the ISA, emulator and integration tests | Accepted |
 
-## 15. Resolved and open questions
+## 15. Resolved questions
 
 | ID | Question | Resolution |
 |---|---|---|
@@ -1193,7 +1208,7 @@ runtime or debug format quietly assumed 32-bit words.
 | Q3 | Implicit flags, or an explicit flag-setting bit? | Implicit (D7). |
 | Q4 | Table-driven exceptions vs an EFP `setjmp` chain? | Table-driven (D13, D23). |
 | Q5 | How do we get to real C++? | `krcompiler` grows a kr216 backend; `krdbg` supplies the debugger. No C-first stage, no LLVM backend (D14). |
-| Q6 | `long double`: alias to `double`, or unsupported? | Unsupported in the current profile; Q20 records the compiler-side tension — a C++ target may need the type to exist. |
+| Q6 | `long double`: alias to `double`, or unsupported? | Superseded by Q20: `long double` is an 8-byte alias for `double`. |
 | Q7 | Bit instructions (`BTST`/`BSET`/`BCLR`)? | Deferred until MMIO or driver code needs them. |
 | Q8 | Block move/fill instructions for `memcpy`/`memset`? | Deferred; post-increment loops are adequate. |
 | Q9 | Interrupt model: vectors, priority, nesting? | 16 vectors and the I flag are defined; no interrupt source exists until there is an OS. Priority and nesting detail deferred with it. |
@@ -1206,17 +1221,17 @@ runtime or debug format quietly assumed 32-bit words.
 | Q16 | Are mask bits 14–15 (PC, SP) really illegal? | Yes (D18); `RET` covers return and nothing needs to push SP. |
 | Q17 | Four FP registers enough, or eight? | Four (D15); the 2-bit field is frozen with the ISA. |
 | Q18 | If the table-driven model proves impractical, switch to a frame-chain EH? | Table-driven stands (D23); the frame chain remains a documented fallback only. |
-| Q19 | What does `krcompiler` need from a new target — IR, ABI hooks, debug-info format, backend interface? | **Answered.** The contract is `plan.md` §4/§9/§10 plus `new-target-guide.md`, ADR 0002 (descriptor schema), ADR 0025 (vtables/RTTI), ADR 0026/0027 (exceptions) and `docs/abi.md`: a profile row, a descriptor, an assembler/encoder + KRO writer, a backend class, a runtime/sysroot, and a VM. Section 12.2 maps kr216 onto it. The remaining target-specific gaps are Q20–Q22. |
-| Q20 | `long double`: keep it absent (`long_double_bits = 0`) or alias it to `double` like KR32? | Alias is the likely resolution: a C++ target is expected to have the type, and an 8-byte alias costs nothing on a machine whose FPU already produces binary64. Keeping it absent is defensible only if the front end refuses it cleanly in C++ mode. |
-| Q21 | The compiler's descriptor has no dedicated `this` register: extend the schema, or pass `this` as argument 0? | Extend the descriptor (ADR 0002 change) so R10 can hold `this` (D17); the fallback is KR16's argument-0 rule, which costs an argument register on every member call. |
-| Q22 | What is the 16-bit exception descriptor and landing-pad convention? | A new KRCompiler ADR plus `docs/abi-kr216.md`: 16-bit descriptor fields, an FP-chain walk, SP restoration from frame size + saved mask, landing-pad registers that are not R0/R1, an 8-byte exception header, and a decision on whether descriptor-less functions can be walked. Until then `has_eh` is false for kr216. |
-| Q23 | krdbg advances disassembly rows by a fixed `instruction_alignment`; kr216 is variable-length. Who changes? | krdbg: extend `TargetLayout` and the surface to advance by `InstructionView::length`. The adapter cannot fix it. Upstream change required before the M4 debug milestone. |
+| Q19 | What does `krcompiler` need from a new target — IR, ABI hooks, debug-info format, backend interface? | **Answered.** The contract is `plan.md` §4/§9/§10 plus `new-target-guide.md`, ADR 0002 (descriptor schema), ADR 0025 (vtables/RTTI), ADR 0026/0027 (exceptions) and `docs/abi.md`: a profile row, a descriptor, an assembler/encoder + KRO writer, a backend class, a runtime/sysroot, and a VM. Section 12.2 maps kr216 onto it; Q20–Q23 record the follow-ups, all now resolved. |
+| Q20 | `long double`: keep it absent (`long_double_bits = 0`) or alias it to `double` like KR32? | **Alias to `double`** (8 bytes, 2-byte align). The C++ front end keeps the type, the FPU already produces binary64, and no new datapath is needed. Supersedes the earlier "unsupported" answer. |
+| Q21 | The compiler's descriptor has no dedicated `this` register: extend the schema, or pass `this` as argument 0? | **Extend the descriptor with `this_register`** (ADR 0002 change). R10 stays `this` (D17) and member calls keep the first argument register; the backend sets it at call sites. |
+| Q22 | What is the 16-bit exception descriptor and landing-pad convention? | **Resolved**: 16-bit descriptor fields, a frame-size + saved-mask entry, an FP-chain walk, **R2 = exception object / R3 = typeinfo** in a landing pad, an 8-byte exception header, and descriptors only for functions with protected regions. New KRCompiler ADR plus `docs/abi-kr216.md`; `has_eh` turns on for the profile when it lands. |
+| Q23 | krdbg advances disassembly rows by a fixed `instruction_alignment`; kr216 is variable-length. Who changes? | **krdbg changes**: `TargetLayout` gains a variable-length mode and the surface advances rows by `InstructionView::length`. The adapter cannot compensate. Prerequisite for the M4 debug milestone. |
 
 ## 16. Roadmap
 
 | Milestone | Deliverable | Exit criteria |
 |---|---|---|
-| **M0** | This plan, the compiler contract mapped, `docs/abi-kr216.md` started | D1–D30 resolved or explicitly deferred; Q1–Q23 answered |
+| **M0** | This plan, the compiler contract mapped, `docs/abi-kr216.md` started | D1–D32 resolved or explicitly deferred; Q1–Q23 answered |
 | **M1** | `kr216-isa.md`, emulator (including FPU), disassembler, KRO image loader, test harness | Hand-written programs run and pass; every encoding has a vector; FP vectors are bit-exact |
 | **M2** | kr216 profile, descriptor, assembler/encoder, KRO writer, `krld` target ID 4, image writer, VM wiring | `krc --target=kr216` emits assembly and objects; `krld` links them; the image runs on the emulator; round-trip and determinism tests pass |
 | **M3** | Backend: integer and pointer code, calls, `ENTER`/`LEAVE` frames; sysroot `bits`; `crt0`; C subset | C programs run on the emulator; `docs/abi-kr216.md` frozen |
@@ -1233,7 +1248,7 @@ compiler target consumes.
 
 | Risk | Likelihood | Impact | Mitigation |
 |---|---|---|---|
-| KRCompiler's frozen contracts need changes: the data-model enum, a `this` register, the 16-bit EH format | High | High | ADRs for each before code; Q20–Q22; keep the ISA stable so only compiler-side contracts move |
+| KRCompiler's frozen contracts need changes: the data-model enum, a `this` register, the 16-bit EH format | High | High | ADRs for each before code; D29–D32 record the resolutions; keep the ISA stable so only compiler-side contracts move |
 | Narrow-target literal typing rejects `long` constants (`long x = 32768;`) | High | Medium | Fix upstream before arithmetic fixtures; add the regression test the guide names |
 | The first 16-bit C++ target exposes 32-bit assumptions in the IR, ABI, EH runtime or debug format | High | High | Vertical slices: C subset → classes → exceptions; differential tests; KDBG frame invariants |
 | krdbg's fixed `instruction_alignment` misrenders variable-length disassembly | High | Medium | Upstream krdbg change before M4 (Q23); the adapter cannot compensate |

@@ -8,15 +8,15 @@
 -->
 # AGENTS.md — kr216
 
-kr216 is the architecture of a 16-bit virtual CPU designed as a first-class C++ target: a 64 KiB little-endian soft machine with 16 general registers, uniform addressing, a variable-length encoding with short compressed forms, and a hardware IEEE-754 binary64 FPU. Its reference implementation is an emulator, `krcompiler` will gain a kr216 backend, and `krdbg` will debug it; this repository owns the ISA, emulator, disassembler, image loader and the integration tests that prove compiler and machine agree (D32), while compiler-side work lives in `..\krcompiler`. It is plan-only today — `kr216-plan.md` v0.11 is approved, with all 34 decisions accepted and all 29 questions resolved — so implementation starts with the two normative documents: `kr216-isa.md` here and `docs/abi-kr216.md` in `..\krcompiler`. Read §1, §12, §14 and §16 first.
+kr216 is the architecture of a 16-bit virtual CPU designed as a first-class C++ target: a 64 KiB little-endian soft machine with 16 general registers, uniform addressing, a variable-length encoding with short compressed forms, and a hardware IEEE-754 binary64 FPU. Its reference implementation is an emulator, `krcompiler` will gain a kr216 backend, and `krdbg` will debug it; this repository owns the ISA, emulator, disassembler, image loader and the integration tests that prove compiler and machine agree (D32), while compiler-side work lives in `..\krcompiler`. It is plan-only today — `kr216-plan.md` v0.11 is approved, with all 34 decisions accepted and all 29 questions resolved — so the normative documents come first: `kr216-isa.md` here (draft 0.1, encodings and semantics) and `docs/abi-kr216.md` in `..\krcompiler` (draft, ABI). Read §1, §12, §14 and §16 first; the emulator is the next deliverable.
 
 <!-- project:summary -->
 
 ```sh
-# Nothing to build, test, or lint yet: this repository is a plan and no source
-# tree, CMake project, or CI workflow. M1 adds the ISA document, emulator,
-# disassembler and image loader; replace this block with the real commands when
-# that source tree exists.
+# Nothing to build, test, or lint yet: this repository is a plan and two
+# documents, with no source tree, CMake project, or CI workflow. M1 adds the
+# emulator, disassembler and image loader; replace this block with the real
+# commands when that source tree exists.
 ```
 <!-- project:commands -->
 

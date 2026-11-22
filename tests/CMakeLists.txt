@@ -149,6 +149,8 @@ if(KRC_EXECUTABLE AND KRLD_EXECUTABLE)
         "${CMAKE_SOURCE_DIR}/src216/cpp_exceptions.cpp" 42 "")
     add_guest_program_test(guest_cpp_exceptions_frames
         "${CMAKE_SOURCE_DIR}/src216/cpp_exceptions_frames.cpp" 42 "")
+    add_guest_program_test(guest_cpp_exception_object
+        "${CMAKE_SOURCE_DIR}/src216/cpp_exception_object.cpp" 42 "")
     add_guest_program_test(guest_signed_div
         "${CMAKE_SOURCE_DIR}/src216/signed_div.c" 42 "")
     add_test(NAME guest_init_array

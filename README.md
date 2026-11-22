@@ -89,9 +89,11 @@ reference. `containers.cpp` builds a `std::string` and a `std::vector<int>`.
 ### Packaged release
 
 `release.cmd` stages `dist/kr216-toolchain/` (binaries, runtime, sysroot, examples and this
-README) and writes `dist/kr216-toolchain.zip`. The extracted tree is self-contained: run
-`examples\build.cmd virtual.cpp` from it without either source checkout. `VERSION.txt` records
-the compiler and emulator revisions.
+README) and writes `dist/kr216-toolchain.zip` plus `dist/SHA256SUMS-windows.txt`. On Linux,
+`scripts/package-release.sh` writes the `.tar.gz` and `SHA256SUMS-linux.txt`. The extracted tree
+is self-contained: run `examples\build.cmd virtual.cpp` from it without either source checkout.
+`VERSION.txt` records the version and the compiler/emulator revisions; the release tag is
+`kr216-v0.1.0`.
 
 By hand, the steps are:
 

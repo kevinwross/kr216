@@ -32,6 +32,7 @@ $compilerRevision = (git -C $compiler rev-parse --short HEAD)
 $kr216Revision = (git -C $root rev-parse --short HEAD)
 @"
 kr216 toolchain
+version 0.1.0
 krcompiler $compilerRevision
 kr216 $kr216Revision
 "@ | Set-Content -Encoding ascii (Join-Path $out 'VERSION.txt')
@@ -39,5 +40,9 @@ kr216 $kr216Revision
 $zip = Join-Path $root 'dist\kr216-toolchain.zip'
 if (Test-Path $zip) { Remove-Item -Force $zip }
 Compress-Archive -Path $out -DestinationPath $zip
+$hash = (Get-FileHash $zip -Algorithm SHA256).Hash.ToLower()
+"$hash  $([IO.Path]::GetFileName($zip))" |
+    Set-Content -Encoding ascii (Join-Path $root 'dist\SHA256SUMS-windows.txt')
 Write-Host "staged $out"
 Write-Host "archive $zip"
+Write-Host "sha256 $hash"

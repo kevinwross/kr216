@@ -130,6 +130,8 @@ if(KRC_EXECUTABLE AND KRLD_EXECUTABLE)
         "${CMAKE_SOURCE_DIR}/src216/cpp_m4.cpp" 42 "")
     add_guest_program_test(guest_cpp_rtti
         "${CMAKE_SOURCE_DIR}/src216/cpp_rtti.cpp" 42 "")
+    add_guest_program_test(guest_cpp_containers
+        "${CMAKE_SOURCE_DIR}/src216/cpp_containers.cpp" 42 "")
     add_guest_program_test(guest_signed_div
         "${CMAKE_SOURCE_DIR}/src216/signed_div.c" 42 "")
     add_test(NAME guest_init_array

@@ -2,14 +2,26 @@
 
 | | |
 |---|---|
-| Status | Draft 0.2 — normative for encodings, operand rules and trap/SYS detail; the §15 decision register is approved |
-| Date | 2026-11-22T00:00:33-08:00 |
+| Status | **Frozen 1.0** — encodings, operand rules, trap/SYS detail and the §15 register are final for the 1.x line; changing an encoding takes a new ISA revision and, when it touches the ABI, an ADR in `..\krcompiler` |
+| Date | 2026-11-22T00:25:00-08:00 |
 | Approval | §15's sixteen decisions approved by the owner, 2026-11-21; changing one is an ISA change under the plan's change policy |
 | Authority | `kr216-plan.md` v0.11 (D1–D34) fixes the shape; this document fixes the exact encodings and semantics the plan delegates to it |
 | Applies to | `kr216-emu`, `kr216-dis`, the krcompiler assembler/encoder, and the kr216 image loader |
 | Open items | section 15 lists every decision this document records that the plan leaves to it, and section 16 what is deferred |
 
 The key words MUST, MUST NOT, SHOULD and MAY are used as in RFC 2119.
+
+**Version 1.0** freezes this document: every encoding in Appendix A decodes to the instruction
+recorded there and every short form matches its `F0` equivalent, proven by
+`tests/vector_test.cpp` and `tests/canonical_test.cpp`; the semantics are pinned by
+`machine_test`, `modes_test`, `fp_test`, `frames_test`, `traps_test` and `fuzz_test`. Section 16
+is what a later revision may add. A change is a new version with a row below.
+
+| Version | Date | Change |
+|---|---|---|
+| 0.1 | 2026-11-21 | First draft: classes, operand rules, trap and SYS detail. |
+| 0.2 | 2026-11-22 | §15 register approved; three Appendix A vectors corrected to the documented encodings (`f2i`, the generic `ld`, the generic `mov`). |
+| 1.0 | 2026-11-22 | Frozen: every Appendix A vector passes and no encoding or §15 decision changes in the 1.x line. |
 
 ## 1. Notation
 

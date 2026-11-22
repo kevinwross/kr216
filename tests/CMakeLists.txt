@@ -92,6 +92,8 @@ if(KRC_EXECUTABLE AND KRLD_EXECUTABLE)
         "${CMAKE_SOURCE_DIR}/src216/float_args.c" 42 "")
     add_guest_program_test(guest_double_args
         "${CMAKE_SOURCE_DIR}/src216/double_args.c" 42 "")
+    add_guest_program_test(guest_long_long_add
+        "${CMAKE_SOURCE_DIR}/src216/long_long_add.c" 42 "")
     add_guest_program_test(guest_float_compare
         "${CMAKE_SOURCE_DIR}/src216/float_compare.c" 42 "")
     add_guest_program_test(guest_double_compare

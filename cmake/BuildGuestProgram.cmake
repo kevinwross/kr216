@@ -68,3 +68,22 @@ if(DEFINED EXPECT_OUTPUT AND NOT EXPECT_OUTPUT STREQUAL "")
         message(FATAL_ERROR "expected output '${EXPECT_OUTPUT}', got:\n${output}")
     endif()
 endif()
+if(DEFINED CHECK_SYMBOLS AND CHECK_SYMBOLS)
+    execute_process(
+        COMMAND "${KRC}" --dump-symbols "${image}"
+        OUTPUT_VARIABLE symbols
+        ERROR_VARIABLE symbols_error
+        RESULT_VARIABLE symbols_result)
+    if(NOT symbols_result EQUAL 0)
+        message(FATAL_ERROR "krc --dump-symbols failed (${symbols_result}):\n${symbols_error}")
+    endif()
+    if(NOT symbols MATCHES "KDBG target=4")
+        message(FATAL_ERROR "KDBG target 4 missing:\n${symbols}")
+    endif()
+    if(NOT symbols MATCHES "function main")
+        message(FATAL_ERROR "KDBG function main missing:\n${symbols}")
+    endif()
+    if(NOT symbols MATCHES "source 0")
+        message(FATAL_ERROR "KDBG source record missing:\n${symbols}")
+    endif()
+endif()

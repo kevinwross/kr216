@@ -102,6 +102,8 @@ if(KRC_EXECUTABLE AND KRLD_EXECUTABLE)
         "${CMAKE_SOURCE_DIR}/src216/float_convert.c" 42 "")
     add_guest_program_test(guest_signed_mul
         "${CMAKE_SOURCE_DIR}/src216/signed_mul.c" 42 "")
+    add_guest_program_test(guest_long_long_compare
+        "${CMAKE_SOURCE_DIR}/src216/long_long_compare.c" 42 "")
     add_test(NAME guest_init_array
         COMMAND ${CMAKE_COMMAND}
                 "-DKRC=${KRC_EXECUTABLE}"

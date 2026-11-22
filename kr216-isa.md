@@ -3,7 +3,7 @@
 | | |
 |---|---|
 | Status | Draft 0.2 — normative for encodings, operand rules and trap/SYS detail; the §15 decision register is approved |
-| Date | 2026-11-21T22:04:42-08:00 |
+| Date | 2026-11-22T00:00:33-08:00 |
 | Approval | §15's sixteen decisions approved by the owner, 2026-11-21; changing one is an ISA change under the plan's change policy |
 | Authority | `kr216-plan.md` v0.11 (D1–D34) fixes the shape; this document fixes the exact encodings and semantics the plan delegates to it |
 | Applies to | `kr216-emu`, `kr216-dis`, the krcompiler assembler/encoder, and the kr216 image loader |
@@ -841,14 +841,14 @@ revision; changing one is an ISA change and takes the plan's change policy.
 | `fst f1, [r2]` | `F4 14 20` |
 | `fsts f1, [r2+4]` | `F4 35 20 04` |
 | `i2f f0, r2` | `F5 00 20` |
-| `f2i r2, f0` | `F5 08 20` |
+| `f2i r2, f0` | `F5 20 20` |
 | `fpush f1` | `F6 01` |
 | `fpop f1` | `F6 05` |
 | `enter #8, #0x0300` | `F7 08 00 03` |
 | `enter #300, #0` | `F8 2C 01 00 00` |
 | `mov r2, r3` (generic) | `F0 00 02 03` |
-| `add r2, [r3+4]` (generic) | `F0 01 02 53 04` |
-| `ld r2, #0x4000` (generic) | `F0 0E 02 10 00 40` |
+| `ld r2, [r3+4]` (generic) | `F0 0E 02 53 04` |
+| `mov r2, #0x4000` (generic) | `F0 00 02 10 00 40` |
 | `ld r2, [r3+6]` (generic) | `F0 0E 02 63 06 00` |
 | `st [r3+2], r2` (generic) | `F0 0F 02 53 02` |
 

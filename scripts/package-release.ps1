@@ -32,7 +32,7 @@ $compilerRevision = (git -C $compiler rev-parse --short HEAD)
 $kr216Revision = (git -C $root rev-parse --short HEAD)
 @"
 kr216 toolchain
-version 0.1.1
+version 0.1.2
 krcompiler $compilerRevision
 kr216 $kr216Revision
 "@ | Set-Content -Encoding ascii (Join-Path $out 'VERSION.txt')
@@ -46,4 +46,5 @@ $hash = (Get-FileHash $zip -Algorithm SHA256).Hash.ToLower()
 Write-Host "staged $out"
 Write-Host "archive $zip"
 Write-Host "sha256 $hash"
+
 

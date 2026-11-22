@@ -46,3 +46,40 @@ add_test(NAME k216_disassembly
             -DDISASSEMBLER=$<TARGET_FILE:kr216_dis>
             -DIMAGE=${CMAKE_CURRENT_SOURCE_DIR}/fixtures/kr216/hello.k216
             -P ${CMAKE_SOURCE_DIR}/cmake/CheckDisassembly.cmake)
+
+if(KRC_EXECUTABLE AND KRLD_EXECUTABLE)
+    function(add_guest_program_test name source expect_exit expect_output)
+        add_test(NAME ${name}
+            COMMAND ${CMAKE_COMMAND}
+                    "-DKRC=${KRC_EXECUTABLE}"
+                    "-DKRLD=${KRLD_EXECUTABLE}"
+                    "-DEMU=$<TARGET_FILE:kr216_emu>"
+                    "-DSOURCE_ROOT=${CMAKE_SOURCE_DIR}"
+                    "-DSOURCE=${source}"
+                    "-DWORK=${CMAKE_CURRENT_BINARY_DIR}/${name}"
+                    "-DEXPECT_EXIT=${expect_exit}"
+                    "-DEXPECT_OUTPUT=${expect_output}"
+                    -P ${CMAKE_SOURCE_DIR}/cmake/BuildGuestProgram.cmake)
+    endfunction()
+
+    add_guest_program_test(guest_hello
+        "${CMAKE_SOURCE_DIR}/src216/hello.c" 0 "Hello, KR216!")
+    add_guest_program_test(guest_abi
+        "${CMAKE_SOURCE_DIR}/src216/abi.c" 42 "abi ok")
+    add_guest_program_test(guest_long_literal
+        "${CMAKE_SOURCE_DIR}/src216/long_literal.c" 42 "long ok")
+    add_test(NAME guest_abi_callee_saved
+        COMMAND ${CMAKE_COMMAND}
+                -DKRC=${KRC_EXECUTABLE}
+                -DKRLD=${KRLD_EXECUTABLE}
+                -DEMU=$<TARGET_FILE:kr216_emu>
+                -DSOURCE_ROOT=${CMAKE_SOURCE_DIR}
+                -DSOURCE=${CMAKE_SOURCE_DIR}/src216/abi_callee.s
+                -DEXTRA_SOURCE=${CMAKE_SOURCE_DIR}/src216/abi_target.c
+                -DNO_CRT0=ON
+                -DWORK=${CMAKE_CURRENT_BINARY_DIR}/guest_abi_callee_saved
+                -DEXPECT_EXIT=42
+                -P ${CMAKE_SOURCE_DIR}/cmake/BuildGuestProgram.cmake)
+else()
+    message(STATUS "guest program tests skipped: KRC_EXECUTABLE/KRLD_EXECUTABLE not found")
+endif()

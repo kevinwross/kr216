@@ -20,6 +20,31 @@ set(SOURCE_ROOT "${CMAKE_CURRENT_SOURCE_DIR}")
 include("${CMAKE_CURRENT_SOURCE_DIR}/cmake/CheckBoundary.cmake")
 unset(SOURCE_ROOT)
 
+set(KRC_EXECUTABLE "" CACHE FILEPATH "krc executable used by guest program tests")
+set(KRLD_EXECUTABLE "" CACHE FILEPATH "krld executable used by guest program tests")
+if(NOT KRC_EXECUTABLE OR NOT KRLD_EXECUTABLE)
+    if(WIN32)
+        set(_krc_suffix ".exe")
+    else()
+        set(_krc_suffix "")
+    endif()
+    set(_compiler_root "${CMAKE_CURRENT_SOURCE_DIR}/../krcompiler/build")
+    foreach(_preset windows-msvc-debug linux-gcc-debug)
+        if(NOT KRC_EXECUTABLE AND
+           EXISTS "${_compiler_root}/${_preset}/host/bin/Debug/krc${_krc_suffix}")
+            set(KRC_EXECUTABLE
+                "${_compiler_root}/${_preset}/host/bin/Debug/krc${_krc_suffix}"
+                CACHE FILEPATH "krc executable used by guest program tests" FORCE)
+        endif()
+        if(NOT KRLD_EXECUTABLE AND
+           EXISTS "${_compiler_root}/${_preset}/host/bin/Debug/krld${_krc_suffix}")
+            set(KRLD_EXECUTABLE
+                "${_compiler_root}/${_preset}/host/bin/Debug/krld${_krc_suffix}"
+                CACHE FILEPATH "krld executable used by guest program tests" FORCE)
+        endif()
+    endforeach()
+endif()
+
 add_subdirectory(src)
 add_subdirectory(tools)
 add_subdirectory(tests)

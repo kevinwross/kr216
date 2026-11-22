@@ -1,6 +1,6 @@
 # kr216 — Implementation Tracker
 
-**Status:** Plan approved 2026-11-21 (`kr216-plan.md` v0.11); ISA frozen at 1.0; ABI appendix accepted (`../krcompiler/docs/abi-kr216.md`, ADR 0053). **Current milestone: M2 — M1 complete 2026-11-22.**
+**Status:** Plan approved 2026-11-21 (`kr216-plan.md` v0.11); ISA frozen at 1.0; ABI appendix accepted (`../krcompiler/docs/abi-kr216.md`, ADR 0053). **Current milestone: M3 — M1 and M2 complete 2026-11-22.**
 **Design contracts:** [`kr216-plan.md`](kr216-plan.md) (scope, decisions, milestones) and [`kr216-isa.md`](kr216-isa.md) (encodings, semantics, traps, SYS).
 **Compiler-side tracker:** [`../krcompiler/implementation.md`](../krcompiler/implementation.md). Work that belongs to the compiler is recorded there (D32) and only referenced here.
 
@@ -118,7 +118,7 @@ Milestone scope and exit criteria are `kr216-plan.md` §16. This table tracks th
 | **M0** | plan, compiler contract mapped, ABI appendix started | D1–D34 resolved; Q1–Q29 answered | **complete** 2026-11-21 |
 | **M1** | `kr216-isa.md`, emulator including FPU, disassembler, KRO image loader, test harness | hand-written programs run and pass; every encoding has a vector; FP vectors are bit-exact; `kr216-isa.md` frozen at 1.0 | **complete** 2026-11-22, `11/11` on Windows, WSL and BitWhiz |
 | **M2** | VM wiring for krld output; loader against real krcompiler images; `kr216-emu`/`kr216-dis` CLIs | `krc --target=kr216` output links and runs here; round-trip and determinism pass | **complete** 2026-11-22 — assemble → link → load → disassemble → run and determinism pass on Windows, WSL and BitWhiz; see the gate block in §9 |
-| **M3** | execution of compiler-generated C: ABI (frames, calls, ENTER/LEAVE), differential runs | C programs run and match host output | not started |
+| **M3** | execution of compiler-generated C: ABI (frames, calls, ENTER/LEAVE), differential runs | C programs run and match host output | **in progress** — compiler-built C runs and matches host output on Windows; ABI probes pass; WSL/BitWhiz gate remains |
 | **M4** | machine-level debug interface (step, run, memory, unwind), KDBG payload handling, console/COM mapping | krdbg drives the emulator; backtraces match expected frames | not started |
 | **M5** | execution of 16-bit exception descriptors, landing pads, unwinding tests | `try`/`catch` runs destructors correctly through the emulator | not started |
 | **M6** | density and performance measurement for the benchmark corpus | ≤ 2.5 B/instruction; benchmarks tracked | not started |
@@ -211,9 +211,9 @@ Milestone scope and exit criteria are `kr216-plan.md` §16. This table tracks th
 
 ### M3 — C programs run here
 
-- [ ] Execute a compiler-built C program (loops, pointers, aggregates) and compare output and exit status with the host build.
-- [ ] Check the ABI the emulator can observe: argument registers, stack argument placement, frame layout, callee-saved registers, aggregate destination in R6.
-- [ ] Verify the literal-typing regression (`long x = 32768;`) on the kr216 profile before arithmetic fixtures.
+- [x] Execute a compiler-built C program (loops, pointers, aggregates) and compare output and exit status with the host build: `src216/hello.c`, `src216/abi.c` and `src216/long_literal.c` run with the same output and status as their WSL host builds.
+- [x] Check the ABI the emulator can observe: argument registers, stack argument placement, frame layout, callee-saved registers, aggregate destination in R6: `guest_abi` exercises R2-R5, `sum6` the stack arguments, `make_pair` the R6 destination, and `guest_abi_callee_saved` checks R8/R9 across a C call.
+- [x] Verify the literal-typing regression (`long x = 32768;`) on the kr216 profile before arithmetic fixtures: the IRGen unit test pins `store i32 32768`, and `guest_long_literal` prints `long ok` and exits 42.
 
 ### M4 — debugger interface and unwinding
 
@@ -354,3 +354,4 @@ Each item was open in this tracker's first draft; the owner resolved all seven o
   linux-gcc-debug        PASS 13/13   (BitWhiz, aarch64, GCC 14.2.0)
   ```
   The compiler side at `bb6ce58` produced the same 148-byte image on all three hosts (SHA-256 `D61FAEC3…04FF`), and each host's `kr216-emu` exited **42** on it. `krc_tests --test-case='kr216*'` is **37/37 cases, 486 assertions** on Windows, WSL and BitWhiz. Full compiler suites: WSL `linux-gcc-debug` **723/723**, BitWhiz `linux-gcc-debug` **919/919**; the Windows row is **912/915**, with the three pre-existing VM filesystem tests (`krc_run_kr16_file_layer`, `krc_run_kr16_shipped_fileio`, `krc_run_div_and_vsprintf`) still failing and outside this milestone. M2's round-trip and determinism criterion is met on all three hosts; the Windows full-suite failure is recorded as a FIX-BEFORE, not claimed green.
+- **2026-11-22T02:09:45-08:00** — **M3's C path runs on Windows: the compiler's own generated C matches the host build.** The compiler-side backend and runtime are at `76f7d1a`; this repository gained `src216/{hello,abi,long_literal,sum6_probe}.c`, `src216/abi_callee.s` + `abi_target.c`, and `cmake/BuildGuestProgram.cmake`, with four CTest cases that compile the runtime and fixture with `krc`, link with `krld`, and run under `kr216-emu`. `build.cmd` is **17/17**. Guest vs WSL host: `Hello, KR216!` / status 0; `abi ok` / status 42; `long ok` / status 42. ABI probes cover R2-R5, stack arguments past the fourth, `make_pair`'s R6 destination, and R8/R9 across a C call. The M3 checklist is fully ticked; WSL and BitWhiz rows and the full compiler suite gate remain. The backend deliberately diagnoses floating point, 64-bit arithmetic beyond parameters, and 32-bit multiply/divide/shift rather than lowering them.

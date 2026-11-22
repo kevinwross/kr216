@@ -51,6 +51,18 @@ This file is the live tracker. It owns tasks, evidence, gates and the running lo
 
 Verified 2026-11-21: Linux 6.18.39+rpt-rpi-2712 aarch64, 4 cores, 16 GiB RAM, git 2.47.3.
 
+**Installed compiler on BitWhiz.** `krcompiler` is built and installed for the other projects: source at `/home/kevinro/repos/krcompiler` (`4b96bca`), preset `linux-gcc-release`, installed with `cmake --install build/linux-gcc-release --prefix $HOME/.local`. That puts `krc` and `krld` (both 0.2.0) in `~/.local/bin`, the target sysroot in `~/.local/share/krc/sysroot`, and the CMake packages in `~/.local/lib/cmake` (`krc-toolchain`, `krc-debug`). `~/.local/bin` is on the login `PATH` (a login shell resolves `krc`), but not on the non-login `PATH` an SSH command gets, so scripts must name the absolute path or export it. The release suite is **915/915** in 81.5 s.
+
+Recipe that works with the installed tree (verified end to end: a C program compiled, linked and ran to exit 42 under the KR32 VM):
+
+```
+krc --sysroot ~/.local/share/krc/sysroot --target=kr32 -c hello.c -o hello.kro
+krld hello.kro ~/.local/share/krc/sysroot/kr32/lib/libkrcrt.kro \
+     .../kr32/lib/fileio.s .../kr32/lib/eh.s .../kr32/lib/crt0.s -o hello.k32
+```
+
+`krc -o image.k32 hello.c` is not a path: for KR32 it prints "code generation is not implemented yet" and exits 2, because the image writer is the linker's. KR16 differs — it writes a `.kex` directly or a KRO object with `--emit-object`.
+
 **Discovered on 2026-11-21, on the Windows dev machine** (command and output in the running log):
 
 - `vswhere.exe` reports the Visual Studio installation at `C:\Program Files\Microsoft Visual Studio\18\Community`, product version 18.12.1.
@@ -284,3 +296,4 @@ Each item was open in this tracker's first draft; the owner resolved all seven o
 - **2026-11-21T22:51:55-08:00** — *Correction to the entry above's push implication.* BitWhiz does hold a GitHub credential: `credential.helper=store` is set globally, `~/.git-credentials` exists with one line (presence and line count checked; the file was not read), and `GIT_TERMINAL_PROMPT=0 git push --dry-run origin main` exits 0. What is absent is not credentials but an encrypted credential manager — `store` keeps the token in plaintext, and GitHub SSH is unconfigured. §3 corrected; the ARM64 host can push a gate record if a future task needs it.
 - **2026-11-21T23:02:06-08:00** — Re-checked BitWhiz after the owner's credential fix. Effective state unchanged in mechanism, refreshed in substance: `~/.git-credentials` was rewritten at 23:01:34 (1 line, 124 bytes; contents not read) and the HTTPS push dry-run still exits 0, so pushes from BitWhiz work. The owner also added `credential.credentialstore=secretservice`, but it has no backend on that host: there is no `git-credential-manager`, `/usr/lib/git-core` carries only `git-credential-store` and `-cache`, `secret-tool` is absent although `libsecret-1-0` and `gnome-keyring` are installed, and `credential.helper` is still `store`. GitHub over SSH remains unavailable: `~/.ssh` holds only `authorized_keys` and no agent is running.
 - **2026-11-21T23:04:20-08:00** — Deploy-key path set up on BitWhiz: generated `~/.ssh/id_ed25519` (ed25519, no passphrase, comment `bitwhiz-kr216-deploy`), trusted GitHub's host key on first use (`ssh -o StrictHostKeyChecking=accept-new -T git@github.com` added the ED25519 key to `known_hosts`), and tried the SSH remote. `git@github.com` still answers `Permission denied (publickey)` because the public key is not registered on GitHub yet, so the remote was rolled back to the HTTPS URL automatically. Remaining action is the owner's: add the key as a read/write deploy key on `kevinwross/kr216`, after which the switch and fetch test are one command.
+- **2026-11-21T23:13:43-08:00** — Built and installed `krcompiler` on BitWhiz for the other projects. Pulled the checkout to `4b96bca`, configured `linux-gcc-release`, built (80/80 targets, no warnings in the tail), ran `ctest --preset linux-gcc-release` → **915/915 passed in 81.51 s**, and installed with `cmake --install build/linux-gcc-release --prefix $HOME/.local`. `krc --version` and `krld --version` report 0.2.0; `krc --list-targets` shows kr32 and kr16 with backends and kr64 without. End-to-end proof: `hello.c` compiled with the installed `krc -c`, linked with the installed `krld` plus the sysroot's `libkrcrt.kro`, `fileio.s`, `eh.s` and `crt0.s`, and ran under the ARM64 KR32 VM to `exit=42`. Two facts recorded in §3: `krc -o image.k32` is not a KR32 path (it prints the not-implemented message), and `~/.local/bin` is only on the login `PATH`.

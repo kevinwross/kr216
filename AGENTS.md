@@ -8,15 +8,19 @@
 -->
 # AGENTS.md — kr216
 
-kr216 is the architecture of a 16-bit virtual CPU designed as a first-class C++ target: a 64 KiB little-endian soft machine with 16 general registers, uniform addressing, a variable-length encoding with short compressed forms, and a hardware IEEE-754 binary64 FPU. Its reference implementation is an emulator, `krcompiler` will gain a kr216 backend, and `krdbg` will debug it; this repository owns the ISA, emulator, disassembler, image loader and the integration tests that prove compiler and machine agree (D32), while compiler-side work lives in `..\krcompiler`. It is plan-only today — `kr216-plan.md` v0.11 is approved, with all 34 decisions accepted and all 29 questions resolved — so the normative documents come first: `kr216-isa.md` here (draft 0.1, encodings and semantics) and `docs/abi-kr216.md` in `..\krcompiler` (draft, ABI). Read §1, §12, §14 and §16 first; the emulator is the next deliverable.
+kr216 is the architecture of a 16-bit virtual CPU designed as a first-class C++ target: a 64 KiB little-endian soft machine with 16 general registers, uniform addressing, a variable-length encoding with short compressed forms, and a hardware IEEE-754 binary64 FPU. Its reference implementation is an emulator, `krcompiler` will gain a kr216 backend, and `krdbg` will debug it; this repository owns the ISA, emulator, disassembler, image loader and the integration tests that prove compiler and machine agree (D32), while compiler-side work lives in `..\krcompiler`. `kr216-plan.md` v0.11 is approved, with all 34 decisions accepted and all 29 questions resolved. M1 is in progress: the decoder, disassembler, machine, image loader and the encoding, semantics, canonical, modes, FP, frames and fuzz suites exist and pass on Windows, WSL and BitWhiz. The normative documents are `kr216-isa.md` here (draft 0.2, encodings and semantics) and `docs/abi-kr216.md` in `..\krcompiler` (draft, ABI). Read §1, §12, §14 and §16 first.
 
 <!-- project:summary -->
 
 ```sh
-# Nothing to build, test, or lint yet: this repository is a plan and two
-# documents, with no source tree, CMake project, or CI workflow. M1 adds the
-# emulator, disassembler and image loader; replace this block with the real
-# commands when that source tree exists.
+# Windows: the doctor, then configure, build and ctest for windows-msvc-debug.
+build.cmd
+# ARM64 on BitWhiz over SSH: the same preset and ctest.
+build.cmd arm64
+# Linux (WSL and BitWhiz): the presets are the entry point.
+cmake --preset linux-gcc-debug
+cmake --build --preset linux-gcc-debug
+ctest --preset linux-gcc-debug
 ```
 <!-- project:commands -->
 

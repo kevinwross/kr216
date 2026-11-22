@@ -76,9 +76,9 @@ examples\build.cmd containers.cpp
 ```
 
 ```sh
-./examples/build.sh virtual.cpp
-./examples/build.sh exceptions.cpp
-./examples/build.sh containers.cpp
+sh examples/build.sh virtual.cpp
+sh examples/build.sh exceptions.cpp
+sh examples/build.sh containers.cpp
 ```
 
 `virtual.cpp` defines an abstract `Shape` and a `Square` override returning `double`, calls the

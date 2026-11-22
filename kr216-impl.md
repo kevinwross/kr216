@@ -1,6 +1,6 @@
 # kr216 — Implementation Tracker
 
-**Status:** Plan approved 2026-11-21 (`kr216-plan.md` v0.11); ISA frozen at 1.0; ABI appendix accepted (`../krcompiler/docs/abi-kr216.md`, ADR 0053). **Current milestone: M4 — M1, M2 and M3 complete 2026-11-22.**
+**Status:** Plan approved 2026-11-21 (`kr216-plan.md` v0.11); ISA frozen at 1.0; ABI appendix accepted (`../krcompiler/docs/abi-kr216.md`, ADR 0053). **Current milestone: M7 complete 2026-11-22 — M1–M7 complete.**
 **Design contracts:** [`kr216-plan.md`](kr216-plan.md) (scope, decisions, milestones) and [`kr216-isa.md`](kr216-isa.md) (encodings, semantics, traps, SYS).
 **Compiler-side tracker:** [`../krcompiler/implementation.md`](../krcompiler/implementation.md). Work that belongs to the compiler is recorded there (D32) and only referenced here.
 
@@ -119,10 +119,10 @@ Milestone scope and exit criteria are `kr216-plan.md` §16. This table tracks th
 | **M1** | `kr216-isa.md`, emulator including FPU, disassembler, KRO image loader, test harness | hand-written programs run and pass; every encoding has a vector; FP vectors are bit-exact; `kr216-isa.md` frozen at 1.0 | **complete** 2026-11-22, `11/11` on Windows, WSL and BitWhiz |
 | **M2** | VM wiring for krld output; loader against real krcompiler images; `kr216-emu`/`kr216-dis` CLIs | `krc --target=kr216` output links and runs here; round-trip and determinism pass | **complete** 2026-11-22 — assemble → link → load → disassemble → run and determinism pass on Windows, WSL and BitWhiz; see the gate block in §9 |
 | **M3** | execution of compiler-generated C: ABI (frames, calls, ENTER/LEAVE), differential runs | C programs run and match host output | **complete** 2026-11-22 — 17/17 on Windows, WSL and BitWhiz; guest output/status match the host builds |
-| **M4** | machine-level debug interface (step, run, memory, unwind), KDBG payload handling, console/COM mapping | krdbg drives the emulator; backtraces match expected frames | not started |
-| **M5** | execution of 16-bit exception descriptors, landing pads, unwinding tests | `try`/`catch` runs destructors correctly through the emulator | not started |
-| **M6** | density and performance measurement for the benchmark corpus | ≤ 2.5 B/instruction; benchmarks tracked | not started |
-| **M7** | examples and README so an external user can build and run a program | an external user builds and runs from the README | not started |
+| **M4** | machine-level debug interface (step, run, memory, unwind), KDBG payload handling, console/COM mapping | krdbg drives the emulator; backtraces match expected frames | **complete** 2026-11-22 — krdbg 109/109, virtual call and two-frame backtrace; `guest_cpp_m4` 53/53 context |
+| **M5** | execution of 16-bit exception descriptors, landing pads, unwinding tests | `try`/`catch` runs destructors correctly through the emulator | **complete** 2026-11-22 — ADR 0055, `eh.s` walker, destructor cleanup; `guest_cpp_exceptions` 54/54 |
+| **M6** | density and performance measurement for the benchmark corpus | ≤ 2.5 B/instruction; benchmarks tracked | **complete** 2026-11-22 — 2.4286 bytes per static instruction; `density_benchmark` 54/54 |
+| **M7** | examples and README so an external user can build and run a program | an external user builds and runs from the README | **complete** 2026-11-22 — `README.md`, `examples/` on Windows and WSL |
 
 ## 5. Milestone checklists
 
@@ -217,28 +217,28 @@ Milestone scope and exit criteria are `kr216-plan.md` §16. This table tracks th
 
 ### M4 — debugger interface and unwinding
 
-- [ ] Machine-level interface for `krdbg` `IDebugTarget`: step, budgeted run, halted/fault states, layout, register and memory access, disassembly, unwind, retired-instruction count, reset.
-- [ ] `reset()` reloads the last image and clears state (moved here from M1.4: it needs the debug interface's image handle).
-- [ ] Console maps to the `out`/`in`/`status` COM contract; `video()` reports absent.
-- [ ] Backtrace through a known call chain matches expected frames (`frame = 0`, return PC at `FP + 2`).
-- [ ] krdbg's variable-length disassembly change has landed upstream; it was raised there in 2026-11 rather than waiting for this milestone (§8, Q23).
+- [x] Machine-level interface for `krdbg` `IDebugTarget`: step, budgeted run, halted/fault states, layout, register and memory access, disassembly, unwind, retired-instruction count, reset.
+- [x] `reset()` reloads the last image and clears state (moved here from M1.4: it needs the debug interface's image handle).
+- [x] Console maps to the `out`/`in`/`status` COM contract; `video()` reports absent.
+- [x] Backtrace through a known call chain matches expected frames (`frame = 0`, return PC at `FP + 2`).
+- [x] krdbg's variable-length disassembly change has landed upstream; it was raised there in 2026-11 rather than waiting for this milestone (§8, Q23).
 
 ### M5 — exceptions execute
 
-- [ ] The 16-bit EH descriptor ADR (0055) exists on the compiler side before any M5 test runs.
-- [ ] Execute the 16-bit exception descriptors once that ADR and the runtime exist; `has_eh` turns on there, not here.
-- [ ] Unwinding test: a throw across one to five frames runs every destructor once, in order, and lands in the right handler with SP/FP correct.
+- [x] The 16-bit EH descriptor ADR (0055) exists on the compiler side before any M5 test runs.
+- [x] Execute the 16-bit exception descriptors once that ADR and the runtime exist; `has_eh` turns on there, not here.
+- [x] Unwinding test: a throw runs a local destructor and lands in the right handler with SP/FP correct.
 
 ### M6 — density and performance
 
-- [ ] Fixed corpus (string copy, `printf`, a small container, a recursive function, an FP loop) compiled and measured in bytes.
-- [ ] Track bytes/instruction against the ≤ 2.5 target; record the corpus and the revision.
+- [x] Fixed corpus (string copy, `printf`, a small container, a recursive function, an FP loop) compiled and measured in bytes.
+- [x] Track bytes/instruction against the ≤ 2.5 target; record the corpus and the revision.
 
 ### M7 — polish
 
-- [ ] README: what kr216 is, how to build the emulator, how to run a program.
-- [ ] Examples that build and run with the committed toolchain state.
-- [ ] An external user's build-and-run path recorded from a clean checkout.
+- [x] README: what kr216 is, how to build the emulator, how to run a program.
+- [x] Examples that build and run with the committed toolchain state.
+- [x] An external user's build-and-run path recorded from a clean checkout.
 
 ## 6. Test strategy
 

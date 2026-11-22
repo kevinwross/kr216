@@ -33,4 +33,3 @@ tar -czf "$archive" -C "$root/dist" kr216-toolchain-linux
 echo "staged $out"
 echo "archive $archive"
 cat "$root/dist/SHA256SUMS-linux.txt"
-

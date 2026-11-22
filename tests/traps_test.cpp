@@ -103,7 +103,8 @@ void test_each_vector() {
         expect_frame(program, "address frame", 0x0203, 0);
     }
     {
-        // ld r2, [0xFF80] through the F1 absolute form.
+        // ldbu r2, [0xFF80] through the F1 absolute form (op 0 is the byte load, not a word
+        // load; the access still enters the address-error vector).
         Program reserved({0xF1, 0x02, 0x80, 0xFF});
         reserved.vector(kr216::TrapCode::AddressError, 0x0360);
         reserved.run(1);

@@ -93,7 +93,7 @@ README) and writes `dist/kr216-toolchain.zip` plus `dist/SHA256SUMS-windows.txt`
 `scripts/package-release.sh` writes the `.tar.gz` and `SHA256SUMS-linux.txt`. The extracted tree
 is self-contained: run `examples\build.cmd virtual.cpp` from it without either source checkout.
 `VERSION.txt` records the version and the compiler/emulator revisions; the release tag is
-`kr216-v0.1.0`.
+`kr216-v0.1.1`.
 
 By hand, the steps are:
 
@@ -136,3 +136,4 @@ krdbg --kr216 examples/build/example.k216
 `kr216-isa.md` is the encoding and semantics reference; `docs/abi-kr216.md` in krcompiler is the
 ABI. `kr216-plan.md` records the architecture decisions and milestones; `kr216-impl.md` tracks
 their state and the verification gates.
+

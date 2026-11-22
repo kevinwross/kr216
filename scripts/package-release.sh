@@ -21,7 +21,7 @@ cp "$root"/examples/*.cpp "$root/examples/build.sh" "$out/examples/"
 cp "$root/README.md" "$out/README.md"
 {
     echo "kr216 toolchain"
-    echo "version 0.1.0"
+    echo "version 0.1.1"
     echo "krcompiler $(git -C "$compiler" rev-parse --short HEAD)"
     echo "kr216 $(git -C "$root" rev-parse --short HEAD)"
 } >"$out/VERSION.txt"
@@ -33,3 +33,4 @@ tar -czf "$archive" -C "$root/dist" kr216-toolchain-linux
 echo "staged $out"
 echo "archive $archive"
 cat "$root/dist/SHA256SUMS-linux.txt"
+

@@ -118,6 +118,8 @@ if(KRC_EXECUTABLE AND KRLD_EXECUTABLE)
         "${CMAKE_SOURCE_DIR}/src216/float_literal.c" 42 "")
     add_guest_program_test(guest_float_convert_wide
         "${CMAKE_SOURCE_DIR}/src216/float_convert_wide.c" 42 "")
+    add_guest_program_test(guest_printf_long
+        "${CMAKE_SOURCE_DIR}/src216/printf_long.c" 42 "")
     add_guest_program_test(guest_signed_div
         "${CMAKE_SOURCE_DIR}/src216/signed_div.c" 42 "")
     add_test(NAME guest_init_array

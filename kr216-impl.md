@@ -43,9 +43,9 @@ This file is the live tracker. It owns tasks, evidence, gates and the running lo
 |---|---|---|---|
 | Windows x64 | the dev machine | MSVC 19.52.37029 for x64 (Visual Studio 18 Community); CMake 4.3.1-msvc1 and Ninja ship with that Visual Studio | primary development; the Windows gate row |
 | Linux x64 | WSL 2 on the dev machine | GCC and Clang, Ninja; versions recorded at the first build | the Linux gate rows, sanitizer row |
-| Linux ARM64 | **BitWhiz** (Raspberry Pi 5, Debian 13), reached over SSH | GCC and Clang; versions recorded at the first build | the ARM64 gate row, mandatory once per milestone |
+| Linux ARM64 | **BitWhiz** (Raspberry Pi 5, Debian 13), reached over SSH | GCC 14.2.0 and Clang 19.1.7; CMake 3.31.6 and Ninja 1.12.1 | the ARM64 gate row, mandatory once per milestone |
 
-**ARM64 access.** SSH. The host or alias and user are recorded here once supplied (open, owner action); the build script's `arm64` path runs the Linux presets over that connection and captures the revision and counts for the gate block.
+**ARM64 access.** `ssh BitWhiz` works with key authentication as user `kevinro`; the sibling repositories are at `/home/kevinro/repos` (`kr16`, `kr32`, `krcompiler`, `krdbg` and others). **`kr216` is not cloned there yet.** Verified 2026-11-21: Linux 6.18.39+rpt-rpi-2712 aarch64, 4 cores, 16 GiB RAM, git 2.47.3.
 
 **Discovered on 2026-11-21, on the Windows dev machine** (command and output in the running log):
 
@@ -93,7 +93,7 @@ Milestone scope and exit criteria are `kr216-plan.md` §16. This table tracks th
 - [ ] `CMakePresets.json` with the five presets in §3; each preset's binary directory separate.
 - [ ] `build.cmd` as specified in §3, resolving `vswhere` → `vcvars64.bat` → bundled CMake/Ninja.
 - [ ] `build.cmd arm64`: SSH to BitWhiz, run `linux-gcc-debug` and `ctest` there, capture the revision and counts for the gate block.
-- [ ] BitWhiz SSH host or alias and user recorded in §3 (owner supplies them).
+- [ ] Clone this repository on BitWhiz at `~/repos/kr216` (absent as of 2026-11-21).
 - [ ] `.agents/doctor.msvc.ps1` (from `.agents/templates/`) reporting MSVC, CMake and Ninja with versions.
 - [ ] `.gitignore` covering `build/`, `out/`, and CMake user files.
 - [ ] One placeholder test registered with CTest so the entry point proves green from the first commit.
@@ -275,3 +275,4 @@ Each item was open in this tracker's first draft; the owner resolved all seven o
 - **2026-11-21T21:48:41-08:00** — *(backfilled; timestamp from commit `4b96bca`)* Compiler-side registration pushed: ADR 0053 (renumbered from 0052 after the rebase), `docs/abi-kr216.md`, schema v2, D-050, and the indexes. Linux/ARM64 rows not applicable: documentation only.
 - **2026-11-21T22:04:42-08:00** — §15's sixteen decisions approved by the owner and the approval recorded in the ISA header; this tracker created. Toolchain discovery on the Windows dev machine: `vswhere` found Visual Studio 18 Community (18.12.1), `cl` is 19.52.37029 for x64 after `vcvars64.bat`, CMake is the bundled 4.3.1-msvc1 (not on `PATH`, newest Visual Studio generator `Visual Studio 17 2022`), and Ninja ships beside it. Consequence recorded in §3: the Windows build uses Ninja inside `vcvars64`. No build or test run — there is no source tree yet.
 - **2026-11-21T22:28:10-08:00** — Open items resolved by the owner: the ISA freezes 1.0 at M1 exit; the image container's byte layout becomes compiler ADR 0054 (so the EH descriptor is renumbered 0055); the krdbg change is raised upstream now; the ARM64 row is mandatory per milestone with BitWhiz reached over SSH; the Windows build uses `build.cmd`. §8 now records the resolutions and the external tasks; §5 gained the corresponding tasks in M1.1, M1.4, M1.6, M4 and M5. Not run: no build exists.
+- **2026-11-21T22:47:55-08:00** — BitWhiz reached over SSH with key authentication: `ssh -o BatchMode=yes BitWhiz` returned `BitWhiz`, `Linux 6.18.39+rpt-rpi-2712 aarch64`, user `kevinro`, and `~/repos` exists. It contains the sibling checkouts (`kr16`, `kr32`, `krcompiler`, `krdbg` and others) but **not `kr216`**. Toolchain on the host: CMake 3.31.6, ctest 3.31.6, Ninja 1.12.1, GCC 14.2.0, Clang 19.1.7, git 2.47.3, 4 cores and 16 GiB RAM. Recorded in §3; the clone is an open M1.1 task. No build run — there is no source tree on either machine yet.

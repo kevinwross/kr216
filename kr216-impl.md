@@ -166,17 +166,17 @@ Milestone scope and exit criteria are `kr216-plan.md` §16. This table tracks th
 
 **M1.3 Execution core** (`include/kr216/machine.h`, `src/machine.cpp`, `src/memory.cpp`)
 
-- [ ] Machine state: 16 GPRs with R0/R1 semantics, flags, EFP/FP/PC/SP, F0–F3, cycle and retired counters; reset state from ISA §2.4.
-- [ ] Memory: 64 KiB little-endian, unaligned accesses, modulo-65536 addressing, null-page and reserved-window traps, MMIO dispatch.
-- [ ] Trap entry (`{EFP, PC, flags}`, `I` cleared), vector table, `IRET`, trace flag.
-- [ ] Integer ALU: `MOV`, `ADD`/`ADDC`, `SUB`/`SUBB`, `CMP`, `AND`/`OR`/`XOR`/`NOT`/`NEG`, `INC`/`DEC`, `SXTB`, with the flags in ISA §10.2.
-- [ ] Shifts `SHL`/`SHR`/`SAR` with the count and carry rules; `MUL`/`MULH` and the unsigned correction sequence; `DIV`/`DIVS`.
-- [ ] Loads and stores across every mode, including auto-increment/decrement steps and `Ra == Rb`.
-- [ ] Branches (`Bcc`, `BRA`), `CALL`/`JMP` in all forms, `RET`.
-- [ ] `PUSH`/`POP` mask in both orders; `ENTER`/`LEAVE`, including a runtime `SP` adjustment between them.
-- [ ] System: `NOP`, `EI`, `DI`, `HALT`, `SYS`, `RDCYCLE`, `BRK`.
-- [ ] FPU: F0–F3 as binary64, `FADD`–`FDIV`, `FNEG`/`FABS`/`FSQRT`/`FMOV`/`FCMP`/`FRND`, `FLD`/`FST`/`FLDS`/`FSTS`, `I2F`/`U2F`/`F2I`/`F2U` with traps, `FPUSH`/`FPOP`.
-- [ ] SYS host calls 0–4 (`exit`, `write`, `read`, `time`, `debug_write`) with the reserved-number trap.
+- [x] Machine state: 16 GPRs with R0/R1 semantics, flags, EFP/FP/PC/SP, F0–F3, cycle and retired counters; reset state from ISA §2.4.
+- [x] Memory: 64 KiB little-endian, unaligned accesses, modulo-65536 addressing, null-page and reserved-window traps, MMIO dispatch.
+- [x] Trap entry (`{EFP, PC, flags}`, `I` cleared), vector table, `IRET`, trace flag.
+- [x] Integer ALU: `MOV`, `ADD`/`ADDC`, `SUB`/`SUBB`, `CMP`, `AND`/`OR`/`XOR`/`NOT`/`NEG`, `INC`/`DEC`, `SXTB`, with the flags in ISA §10.2.
+- [x] Shifts `SHL`/`SHR`/`SAR` with the count and carry rules; `MUL`/`MULH`; `DIV`/`DIVS`.
+- [x] Loads and stores across every mode, including auto-increment/decrement steps and `Ra == Rb`.
+- [x] Branches (`Bcc`, `BRA`), `CALL`/`JMP` in all forms, `RET`.
+- [x] `PUSH`/`POP` mask in both orders; `ENTER`/`LEAVE`, including a runtime `SP` adjustment between them.
+- [x] System: `NOP`, `EI`, `DI`, `HALT`, `SYS`, `RDCYCLE`, `BRK`.
+- [x] FPU: F0–F3 as binary64, `FADD`–`FDIV`, `FNEG`/`FABS`/`FSQRT`/`FMOV`/`FCMP`/`FRND`, `FLD`/`FST`/`FLDS`/`FSTS`, `I2F`/`U2F`/`F2I`/`F2U` with traps, `FPUSH`/`FPOP`.
+- [x] SYS host calls 0–4 (`exit`, `write`, `read`, `time`, `debug_write`) with the reserved-number trap.
 - [ ] `kr216-emu` CLI: load an image, run with a budget, report halted/fault/exit status.
 
 **M1.4 Image loader** (`include/kr216/image.h`, `src/image.cpp`)
@@ -338,3 +338,4 @@ Each item was open in this tracker's first draft; the owner resolved all seven o
 - **2026-11-21T23:41:36-08:00** — Split the source trees by compiler, at the owner's direction: `src/` is host code built by the host toolchain, `src216/` is guest code built by `krc --target=kr216`, and the boundary is stated in `AGENTS.local.md` and `src216/README.md`. Created `src216/README.md` with what may and may not live there; `src/` appears with the first host code in M1.1. The rule is in §1 and M1.1 gained three tasks: create `src/`, exclude `src216/` from the host build, add a cross-tree include check, and wire a guest build target that fails loudly until the kr216 backend exists. No code written.
 - **2026-11-21T23:54:00-08:00** — **M1.1 complete, M1.2 started.** Code commit `35625b3`: CMake project (C++20, warnings-as-errors, CTest), five presets, `build.cmd` (doctor → `vswhere` → `vcvars64` → the Visual Studio CMake/ctest) with an `arm64` path over SSH, the doctor, `.gitignore`, a boundary check that fails both configure and the `boundary` test on a cross-tree include, and a `guest` target that fails loudly until the kr216 backend exists. First real unit: the ISA §3.1 first-byte length map with `tests/length_map_test.cpp` pinning all 256 bytes, the per-class counts (96 Short, 48 Register, 64 Compact, 32 Normal, 8 escapes, 8 reserved) and the reserved set. Green on all three hosts: `windows-msvc-debug` 2/2, WSL `linux-gcc-debug` 2/2, `build.cmd arm64` on BitWhiz 2/2. `AGENTS.local.md`'s Environment and platform sections are filled in and its `environment:unrecorded` marker removed.
 - **2026-11-22T00:00:33-08:00** — **M1.2 complete.** `decode()` covers every class — short rows and the nine system encodings, the register class, compact register and branch forms, all 29 normal opcodes, and the escape prefixes `F0`–`F8` with reserved fields rejected — and `disassemble()` reproduces the ISA document's own Appendix A text. `tests/vector_test.cpp` runs the 60 vectors in a tight and an over-long buffer, checks truncation asks for more, walks all 256 first bytes against the 22 refused and 234 allocated encodings, and pins ten reserved-field and illegal-operand cases. **The harness found four defects on its first run:** my decoder read the compact branch form little-endian when it packs from the most significant bit; FP stores name the FP register first (`fst f1, [r2]`), not the address; and three Appendix A vectors were wrong — `f2i` is `F5 20 20` under the `OOOO Fd 00` layout, the generic addressing example must be `ld` not `add` because ALU operands are register-or-immediate only, and the generic immediate example must be `mov` not `ld` because `LD`'s second operand is address-only. The ISA document's vectors are corrected in code commit `95c16fa`. Green: Windows 3/3, WSL 3/3, BitWhiz 3/3.
+- **2026-11-22T00:10:14-08:00** — **M1.3 nearly complete** at `908916f`: the machine core owns the memory and trap windows, the register file with R0/R1 constants, the trap frame and EFP chain, the console/timer/system MMIO window, the SYS host calls and the FPU over binary64. Execution covers the integer ALU with the ISA flag rules, shifts, `MUL`/`MULH`, `DIV`/`DIVS`, every load/store mode, branches, calls, mask push/pop, `ENTER`/`LEAVE`, and the whole FP family. `tests/machine_test.cpp` asserts full post-state per case, including trap frames and saved PCs; its first run found one systemic defect — `LD Rd,#imm` shares `Op::Ld` with the memory form and was executed as an indirect load from R0 — now fixed. Green: Windows 4/4, WSL 4/4, BitWhiz 4/4. Remaining for M1.3: the `kr216-emu` CLI, which waits on the image loader (M1.4).

@@ -84,6 +84,10 @@ if(KRC_EXECUTABLE AND KRLD_EXECUTABLE)
         "${CMAKE_SOURCE_DIR}/src216/mul32.c" 42 "")
     add_guest_program_test(guest_div32
         "${CMAKE_SOURCE_DIR}/src216/div32.c" 42 "")
+    add_guest_program_test(guest_float_math
+        "${CMAKE_SOURCE_DIR}/src216/float_math.c" 42 "")
+    add_guest_program_test(guest_double_math
+        "${CMAKE_SOURCE_DIR}/src216/double_math.c" 42 "")
     add_test(NAME guest_init_array
         COMMAND ${CMAKE_COMMAND}
                 "-DKRC=${KRC_EXECUTABLE}"

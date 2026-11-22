@@ -72,6 +72,17 @@ if(KRC_EXECUTABLE AND KRLD_EXECUTABLE)
         "${CMAKE_SOURCE_DIR}/src216/runtime.c" 42 "aa")
     add_guest_program_test(guest_printf
         "${CMAKE_SOURCE_DIR}/src216/printf.c" 42 "42 ok A ff")
+    add_test(NAME guest_init_array
+        COMMAND ${CMAKE_COMMAND}
+                "-DKRC=${KRC_EXECUTABLE}"
+                "-DKRLD=${KRLD_EXECUTABLE}"
+                "-DEMU=$<TARGET_FILE:kr216_emu>"
+                "-DSOURCE_ROOT=${CMAKE_SOURCE_DIR}"
+                "-DSOURCE=${CMAKE_SOURCE_DIR}/src216/init_array.s"
+                "-DEXTRA_SOURCE=${CMAKE_SOURCE_DIR}/src216/init_main.c"
+                "-DWORK=${CMAKE_CURRENT_BINARY_DIR}/guest_init_array"
+                "-DEXPECT_EXIT=42"
+                -P ${CMAKE_SOURCE_DIR}/cmake/BuildGuestProgram.cmake)
     add_test(NAME guest_kdbg
         COMMAND ${CMAKE_COMMAND}
                 "-DKRC=${KRC_EXECUTABLE}"

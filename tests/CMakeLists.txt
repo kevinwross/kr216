@@ -34,3 +34,9 @@ add_test(NAME frames COMMAND frames_test)
 add_executable(traps_test traps_test.cpp)
 target_link_libraries(traps_test PRIVATE kr216_core)
 add_test(NAME traps COMMAND traps_test)
+
+add_executable(k216_image_test k216_image_test.cpp)
+target_link_libraries(k216_image_test PRIVATE kr216_core)
+target_compile_definitions(k216_image_test
+    PRIVATE KR216_FIXTURE_DIR="${CMAKE_CURRENT_SOURCE_DIR}/fixtures/kr216")
+add_test(NAME k216_image COMMAND k216_image_test)

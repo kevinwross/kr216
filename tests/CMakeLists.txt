@@ -40,3 +40,9 @@ target_link_libraries(k216_image_test PRIVATE kr216_core)
 target_compile_definitions(k216_image_test
     PRIVATE KR216_FIXTURE_DIR="${CMAKE_CURRENT_SOURCE_DIR}/fixtures/kr216")
 add_test(NAME k216_image COMMAND k216_image_test)
+
+add_test(NAME k216_disassembly
+    COMMAND ${CMAKE_COMMAND}
+            -DDISASSEMBLER=$<TARGET_FILE:kr216_dis>
+            -DIMAGE=${CMAKE_CURRENT_SOURCE_DIR}/fixtures/kr216/hello.k216
+            -P ${CMAKE_SOURCE_DIR}/cmake/CheckDisassembly.cmake)

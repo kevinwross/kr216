@@ -62,8 +62,8 @@ preset trio (`cmake --preset linux-gcc-debug`, `cmake --build --preset linux-gcc
 | Target | Architecture | Verified by | Notes (yours — preserved on update) |
 |---|---|---|---|
 | Windows | x64 | this dev machine, MSVC 19.52.37025 | `build.cmd` green at `51df2b8`, 25/25 |
-| Linux | x64 | WSL 2 on this dev machine, GCC 15.2.0 | `linux-gcc-debug` green at `caeb3c4`, 17/17 (M3 row; 25/25 not yet rerun) |
-| Linux (Raspberry Pi) | ARM64 | BitWhiz (Raspberry Pi 5, Debian 13) over SSH, GCC 14.2.0 | `linux-gcc-debug` green at `caeb3c4`, 17/17 (M3 row; 25/25 not yet rerun) |
+| Linux | x64 | WSL 2 on this dev machine, GCC 15.2.0 | `linux-gcc-debug` green at `51df2b8`, 25/25 |
+| Linux (Raspberry Pi) | ARM64 | BitWhiz (Raspberry Pi 5, Debian 13) over SSH, GCC 14.2.0 | `linux-gcc-debug` green at `51df2b8`, 25/25 |
 
 Target-specific notes:
 
@@ -112,8 +112,8 @@ the Windows SDK, and `cmake 4.3.1-msvc1 (developer environment)`. `build.cmd` ru
 CMake 4.3.1-msvc1 and ctest from that Visual Studio's `Common7\IDE\CommonExtensions\Microsoft\CMake\CMake\bin\`.
 Neither is on `PATH`. Found with `vswhere -latest -requires Microsoft.VisualStudio.Component.VC.Tools.x86.x64`.
 
-**Verified on** this dev machine **at** `51df2b8`: `windows-msvc-debug` build + `ctest` → 25/25;
-WSL and BitWhiz still record the M3 17/17 row at `caeb3c4`; the post-M3 25/25 rows have not been rerun.
+**Verified at** `51df2b8`: Windows `windows-msvc-debug` → 25/25; WSL `linux-gcc-debug` → 25/25;
+BitWhiz `linux-gcc-debug` → 25/25. The compiler suite is 919/919 on Windows and BitWhiz and 723/723 in WSL at `c230df0`.
 
 **Install (requires approval).** Nothing beyond the doctor on Windows. WSL has no clang, so
 `linux-clang-debug` and `linux-sanitize` are blocked there until it is installed (owner

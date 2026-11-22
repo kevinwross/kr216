@@ -2,9 +2,9 @@
 
 | | |
 |---|---|
-| Status | Draft — all 32 decisions accepted; no open questions |
-| Version | 0.9 |
-| Date | 2026-11-21T20:16:10-08:00 |
+| Status | Draft — all 33 decisions accepted; no open questions |
+| Version | 0.10 |
+| Date | 2026-11-21T20:25:25-08:00 |
 | Scope | CPU architecture and the C++ platform it has to support |
 | Follow-on documents | `kr216-isa.md` (normative encodings), `docs/abi-kr216.md` (in the compiler repo), `kr216-cpp.md`, `kr216-toolchain.md` |
 
@@ -23,6 +23,7 @@
 | 0.7 | 2026-11-21T19:53:51-08:00 | Read `..\krcompiler\plan.md` and the target guide: Q19 answered; section 12 rewritten around the five target layers (profile, descriptor, assembler/KRO, backend, runtime/VM); object format moves from ELF32 to KRO with target ID 4; vtable/RTTI aligned to ADR 0025 scaled to 2-byte words; exception integration and its 16-bit gap recorded; D27–D29 added; Q20–Q22 opened |
 | 0.8 | 2026-11-21T20:08:53-08:00 | Read `..\krdbg\docs\new-dbg-target-guide.md`: new section 11.8 on the debugger/VM interface; FP made mandatory for the KDBG frame convention; console reshaped to krdbg's out/in/status COM contract; the fixed-instruction-alignment gap recorded as Q23; D30 added; krdbg adapter added to the component table |
 | 0.9 | 2026-11-21T20:16:10-08:00 | D29 accepted; Q20–Q23 resolved: long double aliases double, the descriptor gains a `this_register`, landing pads use R2/R3, descriptors exist only for functions with protected regions, and krdbg gains variable-length disassembly. D31 (KDBG in-image, matching KR32) and D32 (compiler-side work lives in the krcompiler repo) added. All 32 decisions accepted |
+| 0.10 | 2026-11-21T20:25:25-08:00 | Q24/Q25 resolved: float arithmetic is strict binary32 (D21 changes; `FRND` added to the F3 family) and memory-class aggregates use ADR 0046's argument pointer with an R6 return destination. Q26–Q29 recorded: container image (D33), ISA/ABI documents next, library ladder accepted, upstream fixes before their milestones |
 
 This is a plan, not a specification. It records what has been decided, why, and what is still
 open. Exact encodings, operand-mode tables and relocation formats belong in `kr216-isa.md`;
@@ -144,8 +145,8 @@ runtime library.
 | R3 | `a1` / `ret1` | Argument 1; return value (high word) | caller | caller |
 | R4 | `a2` | Argument 2 | caller | caller |
 | R5 | `a3` | Argument 3 | caller | caller |
-| R6 | `t0` | Scratch / temporary | caller | caller |
-| R7 | `t1` | Scratch / temporary; virtual-call target | caller | caller |
+| R6 | `t0` | Scratch / temporary; aggregate-return destination at call sites | caller | caller |
+| R7 | `t1` | Scratch / temporary; indirect-call target | caller | caller |
 | R8 | `s0` | General purpose, preserved across calls | callee | callee |
 | R9 | `s1` | General purpose, preserved across calls | callee | callee |
 | R10 | `this` | C++ `this` pointer; scratch in free functions | caller | caller |
@@ -510,7 +511,12 @@ destination, 2-bit source):
 | 1 | `FSUB Fd, Fs` | 6 | `FSQRT Fd` |
 | 2 | `FMUL Fd, Fs` | 7 | `FMOV Fd, Fs` |
 | 3 | `FDIV Fd, Fs` | 8 | `FCMP Fd, Fs` |
-| 4 | `FNEG Fd` | 9–15 | reserved |
+| 4 | `FNEG Fd` | 9 | `FRND Fd` |
+| | | 10–15 | reserved |
+
+`FRND` rounds the binary64 value in `Fd` to the nearest binary32 value and widens it back, so a
+`float` operation can run in the binary64 datapath and still produce a strict binary32 result
+(section 11.1).
 
 **Load/store (`F4`, 3–4 bytes).** `F4` followed by `OOOO Fd MM`, then `BBBB 0000`, then `d8`
 only when `MM = 01`. `OOOO`: 0 `FLD` (8-byte load), 1 `FST` (8-byte store), 2 `FLDS` (float
@@ -529,7 +535,8 @@ decrements; `FPOP Fd` loads 8 and increments. SP stays even.
 FP arithmetic follows IEEE-754 binary64 with round-to-nearest-even, no traps, no status
 register: overflow produces infinity, invalid operations produce a quiet NaN, division by zero
 produces infinity. NaN payloads and sign of zero are not specified beyond IEEE requirements.
-`FSQRT` is correctly rounded.
+`FSQRT` is correctly rounded. All operands live in binary64; a `float` operation is computed in
+binary64 and rounded to binary32 with `FRND`, so the FPU never needs a second datapath.
 
 ### 8.8 Frame instructions
 
@@ -661,7 +668,7 @@ built from 16×16 partial products. That is the standard cost on a 16-bit machin
 | `int` | 2 | 2 | `INT_MAX` = 32767; this is the big source-compatibility constraint |
 | `long` | 4 | 2 | |
 | `long long` | 8 | 2 | 64-bit division is a runtime helper |
-| `float` | 4 | 2 | stored as binary32; widened to binary64 on load |
+| `float` | 4 | 2 | stored as binary32; widened to binary64 on load; f32 arithmetic rounds via `FRND` |
 | `double` | 8 | 2 | binary64; lives in F0–F3 for arithmetic |
 | `long double` | 8 | 2 | alias for `double` (Q20) |
 | pointer, reference, member pointer | 2 | 2 | 64 KiB address space |
@@ -684,10 +691,13 @@ profile value and an ADR in the compiler (section 12.2). The compiler's narrow-t
 typing defect — `long x = 32768;` is currently rejected on a 16-bit `int` target — must be
 fixed upstream before kr216 arithmetic tests can be trusted.
 
-`float` expressions are evaluated in binary64 and rounded to binary32 on store
-(`FLT_EVAL_METHOD = 1`), matching the classic x87 model. This is standards-conforming and
-avoids a separate single-precision datapath; it does mean `float` results can differ from a
-strictly single-precision target (Q15).
+`float` arithmetic is strict binary32 (`FLT_EVAL_METHOD = 0`): the value is widened to binary64
+on load, the operation runs in binary64, and `FRND` rounds the result back to binary32 precision
+before it is used. That is one extra instruction per f32 arithmetic operation, which is the
+right trade on a machine where floating point is rare and a second datapath would be waste; the
+alternative, evaluating `float` in binary64 (x87-style excess precision), would require the
+compiler's front end to promote float expressions and would diverge from the f32 operations its
+IR already emits (Q24).
 
 ### 11.2 Calling convention
 
@@ -698,7 +708,8 @@ strictly single-precision target (Q15).
 | FP arguments 0–1 | F0, F1 |
 | Return (integer/pointer) | R2 (low word), R3 (high word for 32-bit) |
 | Return (floating point) | F0 |
-| Return of aggregate | Hidden pointer in R2 (sret), shifting integer args to R3–R5 |
+| Return of aggregate | Memory-class destination in R6, loaded just before CALL; R2–R5 stay arguments |
+| Aggregate argument | Invisible pointer to a caller-owned copy, one integer argument word; callee copies |
 | Caller-saved | R2–R7, R10, F0–F3 |
 | Callee-saved | R8, R9, FP, SP |
 | Not preserved | Flags, EFP |
@@ -706,6 +717,13 @@ strictly single-precision target (Q15).
 The integer and FP argument files are independent: a function may take four integer arguments
 and two doubles without conflict. Arguments that do not fit their register file go on the
 stack, each integer slot 2 bytes and each FP slot 8 bytes.
+
+Aggregates are memory-class on kr216 (`aggregate_rules = MemoryOnly`, ADR 0046). An aggregate
+argument is an invisible pointer to a caller-owned copy and consumes one integer argument word;
+the callee copies the object into its own frame, so modifying the parameter leaves the caller's
+copy untouched. An aggregate return destination is loaded into R6 just before the call; R6 is an
+ordinary caller-saved scratch at all other times, and R2–R5 keep their argument roles. This
+mirrors KR32's R4 destination rather than shifting the argument registers (Q25).
 
 `this` in R10 is caller-saved, so a member function that calls another member and then still
 needs its own `this` must preserve it — in R8/R9 or a stack slot. That is the price of freeing
@@ -755,9 +773,9 @@ unwinder and the debugger both read `[FP]`: KDBG's frame model records the offse
 pointer to the saved caller frame, and `ENTER` makes that offset 0 with the return PC at `FP+2`
 (section 11.8). A leaf function that keeps `push fp` still has a valid frame record.
 
-Return: `R2` for 16-bit scalars and pointers, `R2:R3` for 32-bit, `F0` for floating point,
-aggregates through the hidden pointer. Small trivially-copyable aggregates (≤ 4 bytes) return
-in `R2:R3` as an optimization once the ABI is stable.
+Return: `R2` for 16-bit scalars and pointers, `R2:R3` for 32-bit, `F0` for floating point, and
+memory-class aggregates through the R6 destination. Register returns for small aggregates need
+an ADR 0046 extension and are out of scope for now.
 
 Name mangling is KRCompiler's Itanium-like `_Z` scheme, including its `name__tag` form for
 template instances and `_ZTV`/`_ZTI`/`_ZTS` for metadata; `extern "C"` is unmangled. There is no
@@ -934,7 +952,7 @@ target's scope; the compiler's tiers decide when each piece exists.
 | `switch` | Indirect jump, absolute/PC-relative tables | `JMP Rd`, `JMP addr16` |
 | Function pointers, virtual calls | Indirect call, vtable load, `this` in a fixed register | `CALL Rd`, R10 |
 | `long`, `long long` | Carry arithmetic, `MULH`, multiword shift sequences | `ADDC`/`SUBB`, shift sequences |
-| `float`, `double` | binary64 register file, load/store, conversion | F3–F6 family |
+| `float`, `double` | binary64 register file, load/store, conversion, `FRND` rounding | F3–F6 family |
 | Exceptions | Frame chain, PC→landing-pad table, heap | FP chain + tables |
 | RTTI, `dynamic_cast` | Data sections only | No ISA impact |
 | Templates, `constexpr` | Compile-time only | No ISA impact |
@@ -1021,9 +1039,10 @@ fields and 16-bit target addresses. Sections: `.text`, `.rodata`, `.data`, `.bss
 `.init_array`, `.fini_array`, and `.cpp_except` for the exception descriptors; debug information
 travels in KDBG (also target ID 4). Relocations are the common absolute and PC-relative
 families, plus kr216 branch relaxation between `CALL rel9` and `CALL addr16`. The image the
-emulator loads is a KRCompiler image container, not ELF; like KR32's `.k32`, it carries the
-sections and a KDBG payload, so the debugger gets debug information from the same file it runs
-(D31). `krld --debug-file` can still split the payload into a sidecar for a very small image.
+emulator loads is a KRCompiler image container (D33) — magic, target/ABI version, sections,
+entry, image base and the KDBG payload — not ELF. Like KR32's `.k32`, it carries the sections
+and a KDBG payload, so the debugger gets debug information from the same file it runs (D31).
+`krld --debug-file` can still split the payload into a sidecar for a very small image.
 
 Because the vendored KDBG reader recognises only the KR32 `.k32` and KR16 `.kex` containers, the
 kr216 debug adapter extracts the payload from the kr216 container, calls `read_payload`, and
@@ -1186,7 +1205,7 @@ runtime or debug format quietly assumed 32-bit words.
 | D18 | `PUSH`/`POP` take a 16-bit mask; 1-byte forms are single-bit masks; bits 14–15 illegal | Accepted |
 | D19 | Addressing modes are uniform across all 16 registers and are the canonical ISA form; short classes are compressions | Accepted |
 | D20 | Byte loads are explicitly signed (`LDBS`) or unsigned (`LDBU`) | Accepted |
-| D21 | `float` is 4-byte storage with binary64 evaluation (`FLT_EVAL_METHOD = 1`) | Accepted |
+| D21 | `float` is 4-byte storage with strict binary32 arithmetic (`FLT_EVAL_METHOD = 0`); the binary64 datapath rounds after each f32 operation via `FRND` | Accepted |
 | D22 | FP arguments in F0/F1, FP return in F0, all FP registers caller-saved | Accepted |
 | D23 | `ENTER #frame, #mask` and `LEAVE #mask` define the frame; `ENTER` carries no landing-pad operand — landing pads are table data | Accepted |
 | D24 | Load-store ISA: memory operands appear only on `LD`/`ST`; ALU operations take registers and immediates | Accepted |
@@ -1198,6 +1217,7 @@ runtime or debug format quietly assumed 32-bit words.
 | D30 | Debug/VM contract: FP is maintained in every function (KDBG `frame = 0`, return PC at `FP+2`, locals negative); the image carries a KDBG payload with a defined `image_base`; the console maps to krdbg's `out`/`in`/`status` COM contract; the VM exposes a monotonic instruction counter | Accepted |
 | D31 | KDBG payloads are embedded in the image by default, matching KR32's in-image pattern; `krld --debug-file` may write an optional sidecar, which is the preferred form only for very small images | Accepted |
 | D32 | Compiler-side work — the data-model ADR, `this_register` schema change, 16-bit EH descriptor, `docs/abi-kr216.md` and the backend — lives in the krcompiler repository; this repository owns the ISA, emulator and integration tests | Accepted |
+| D33 | The kr216 image is a KRCompiler container with magic, target/ABI version, sections, entry, image base and the embedded KDBG payload, like KR32's `.k32`; the emulator loader parses it | Accepted |
 
 ## 15. Resolved questions
 
@@ -1217,7 +1237,7 @@ runtime or debug format quietly assumed 32-bit words.
 | Q12 | Self-hosting the toolchain? | No. |
 | Q13 | Is `this` in R10 worth losing a callee-saved register? | Kept (D17). Measure spill rates at M3 and revisit if member-heavy code suffers. |
 | Q14 | Should ALU instructions take memory operands (PDP-11 style)? | Load-store only (D24); memory operands live on `LD`/`ST`. |
-| Q15 | `float` evaluation model: widening, or `float` = `double`? | Widen to binary64 (D21); `sizeof(float) == 4`. |
+| Q15 | `float` evaluation model: widening, or `float` = `double`? | Superseded by Q24: strict binary32 (D21). |
 | Q16 | Are mask bits 14–15 (PC, SP) really illegal? | Yes (D18); `RET` covers return and nothing needs to push SP. |
 | Q17 | Four FP registers enough, or eight? | Four (D15); the 2-bit field is frozen with the ISA. |
 | Q18 | If the table-driven model proves impractical, switch to a frame-chain EH? | Table-driven stands (D23); the frame chain remains a documented fallback only. |
@@ -1226,12 +1246,18 @@ runtime or debug format quietly assumed 32-bit words.
 | Q21 | The compiler's descriptor has no dedicated `this` register: extend the schema, or pass `this` as argument 0? | **Extend the descriptor with `this_register`** (ADR 0002 change). R10 stays `this` (D17) and member calls keep the first argument register; the backend sets it at call sites. |
 | Q22 | What is the 16-bit exception descriptor and landing-pad convention? | **Resolved**: 16-bit descriptor fields, a frame-size + saved-mask entry, an FP-chain walk, **R2 = exception object / R3 = typeinfo** in a landing pad, an 8-byte exception header, and descriptors only for functions with protected regions. New KRCompiler ADR plus `docs/abi-kr216.md`; `has_eh` turns on for the profile when it lands. |
 | Q23 | krdbg advances disassembly rows by a fixed `instruction_alignment`; kr216 is variable-length. Who changes? | **krdbg changes**: `TargetLayout` gains a variable-length mode and the surface advances rows by `InstructionView::length`. The adapter cannot compensate. Prerequisite for the M4 debug milestone. |
+| Q24 | How should `float` arithmetic be evaluated on a binary64-only FPU? | **Strict binary32** (D21): the backend computes in binary64 and rounds after each f32 op with the new `FRND` instruction; `FLT_EVAL_METHOD = 0`, one extra instruction per f32 arithmetic op, no compiler front-end change. |
+| Q25 | How do memory-class aggregates cross calls on kr216? | **ADR 0046 pointer + R6 destination**: an aggregate argument is an invisible pointer to a caller-owned copy (one argument word, callee copies); a memory-class return destination is loaded into R6 before CALL, so R2–R5 stay argument registers. |
+| Q26 | What is the kr216 loadable image? | **A KRCompiler container** (D33): magic, target/ABI, sections, entry, image base and the embedded KDBG payload, like KR32's `.k32`; the emulator loader parses it. |
+| Q27 | What do we write next? | **`kr216-isa.md` and `docs/abi-kr216.md` in parallel.** They define the instruction semantics, trap/boot/SYS detail and the ABI, after which implementation planning has stable contracts. |
+| Q28 | D25 promises `string`/`vector`/`map`, but KRCompiler ships them at v1.2/v1.3. | **Accept the compiler ladder**: `string`/`vector` at v1.2, `map` at v1.3; the roadmap wording says so and no extra work is scheduled. |
+| Q29 | When do the literal-typing fix and krdbg's variable-length change land? | **Before their dependent milestones**: literal typing before M3 arithmetic tests, krdbg before M4 debug. Both are upstream blockers, not workarounds. |
 
 ## 16. Roadmap
 
 | Milestone | Deliverable | Exit criteria |
 |---|---|---|
-| **M0** | This plan, the compiler contract mapped, `docs/abi-kr216.md` started | D1–D32 resolved or explicitly deferred; Q1–Q23 answered |
+| **M0** | This plan, the compiler contract mapped, `docs/abi-kr216.md` started | D1–D33 resolved or explicitly deferred; Q1–Q29 answered |
 | **M1** | `kr216-isa.md`, emulator (including FPU), disassembler, KRO image loader, test harness | Hand-written programs run and pass; every encoding has a vector; FP vectors are bit-exact |
 | **M2** | kr216 profile, descriptor, assembler/encoder, KRO writer, `krld` target ID 4, image writer, VM wiring | `krc --target=kr216` emits assembly and objects; `krld` links them; the image runs on the emulator; round-trip and determinism tests pass |
 | **M3** | Backend: integer and pointer code, calls, `ENTER`/`LEAVE` frames; sysroot `bits`; `crt0`; C subset | C programs run on the emulator; `docs/abi-kr216.md` frozen |

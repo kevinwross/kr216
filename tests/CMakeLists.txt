@@ -62,6 +62,15 @@ if(KRC_EXECUTABLE AND KRLD_EXECUTABLE)
                     -P ${CMAKE_SOURCE_DIR}/cmake/BuildGuestProgram.cmake)
     endfunction()
 
+    add_test(NAME density_benchmark
+        COMMAND ${CMAKE_COMMAND}
+                "-DKRC=${KRC_EXECUTABLE}"
+                "-DKRLD=${KRLD_EXECUTABLE}"
+                "-DBENCH=$<TARGET_FILE:kr216-bench>"
+                "-DSOURCE_ROOT=${CMAKE_SOURCE_DIR}"
+                "-DWORK=${CMAKE_CURRENT_BINARY_DIR}/density_benchmark"
+                -P ${CMAKE_SOURCE_DIR}/cmake/RunDensityBenchmark.cmake)
+
     add_guest_program_test(guest_hello
         "${CMAKE_SOURCE_DIR}/src216/hello.c" 0 "Hello, KR216!")
     add_guest_program_test(guest_abi

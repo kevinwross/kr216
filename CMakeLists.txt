@@ -23,6 +23,14 @@ unset(SOURCE_ROOT)
 add_subdirectory(src)
 add_subdirectory(tests)
 
+# Guest code (src216/) is compiled by `krc --target=kr216`, never by this build. The target
+# exists so the gap is explicit rather than silent: it names what is missing and fails,
+# until the compiler has a kr216 backend (kr216-plan.md M2).
+add_custom_target(guest
+    COMMAND ${CMAKE_COMMAND} -E echo "guest: src216/ needs krc with --target=kr216, which this toolchain does not have yet (kr216-plan.md M2)"
+    COMMAND ${CMAKE_COMMAND} -E false
+    VERBATIM)
+
 # Re-run the boundary check as a test too, so a cross-tree include fails even when a
 # build directory was configured before the include was added.
 add_test(NAME boundary

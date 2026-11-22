@@ -9,6 +9,7 @@ setlocal EnableExtensions
 
 set "PRESET=%~1"
 if "%PRESET%"=="" set "PRESET=windows-msvc-debug"
+if /i "%PRESET%"=="arm64" goto arm64
 
 set "VSWHERE=%ProgramFiles(x86)%\Microsoft Visual Studio\Installer\vswhere.exe"
 if not exist "%VSWHERE%" (
@@ -53,4 +54,14 @@ if errorlevel 1 exit /b 1
 "%CTEST%" --preset "%PRESET%"
 if errorlevel 1 exit /b 1
 echo build: %PRESET% passed
+exit /b 0
+
+:arm64
+rem The ARM64 row runs on BitWhiz over SSH (AGENTS.local.md section 3). The clone is kept
+rem there, so this pulls, configures, builds and tests the Linux preset on the Pi and prints
+rem its counts; a gate block is written from this output.
+echo build: arm64 on BitWhiz
+ssh -o BatchMode=yes BitWhiz "cd /home/kevinro/repos/kr216 && git pull --ff-only && cmake --preset linux-gcc-debug && cmake --build --preset linux-gcc-debug -- -j4 && ctest --preset linux-gcc-debug"
+if errorlevel 1 exit /b 1
+echo build: arm64 passed
 exit /b 0

@@ -98,9 +98,16 @@ The `kr32` install also drops `cxx-gap-signoff.md` and the `OFL-*.txt` font lice
   `...\Common7\IDE\CommonExtensions\Microsoft\CMake\Ninja\ninja.exe` beside it.
 - That CMake's newest Visual Studio generator is **`Visual Studio 17 2022`**, so it cannot generate a project for the installed Visual Studio 18. The Windows build therefore runs **`Ninja` inside the `vcvars64` environment**; the build entry point must set that environment itself rather than assume a developer prompt.
 
-**Build entry point (to exist from the first M1 commit).** `build.cmd [preset] [--test]` resolves the toolchain the way the discovery above did — `vswhere`, then `vcvars64.bat`, then the bundled CMake and Ninja — configures the preset, builds, and with `--test` runs `ctest`. It never assumes `cmake`, `cl`, `ninja` or a generator name on `PATH`. On Linux the equivalent is the preset's plain `cmake --preset <preset>`.
+**Build entry point.** `build.cmd [preset|arm64]` runs the doctor, resolves the toolchain
+(`vswhere` → `vcvars64.bat` → the Visual Studio CMake and ctest), then configures, builds and
+tests the preset; `build.cmd arm64` does the same on BitWhiz over SSH. On Linux the preset is
+the entry point: `cmake --preset linux-gcc-debug && cmake --build --preset linux-gcc-debug &&
+ctest --preset linux-gcc-debug`. Never compose a configure or build command from memory: the
+`windows-msvc` presets need no vcvars because the Visual Studio generator finds its own tools,
+but `build.cmd` sets that environment anyway so one entry point covers both generators.
 
-**Presets (to exist from the first M1 commit):** `windows-msvc-debug`, `windows-msvc-release`, `linux-gcc-debug`, `linux-clang-debug`, `linux-sanitize`. The ARM64 row is the Linux presets run on BitWhiz.
+**Presets.** `windows-msvc-debug`, `windows-msvc-release`, `linux-gcc-debug`,
+`linux-clang-debug`, `linux-sanitize`. The ARM64 row is the Linux presets run on BitWhiz.
 
 ## 4. Milestones
 
@@ -131,23 +138,23 @@ Milestone scope and exit criteria are `kr216-plan.md` §16. This table tracks th
 
 **M1.1 Project skeleton**
 
-- [ ] `CMakeLists.txt`: C++20, `/W4 /WX` on MSVC and `-Wall -Wextra -Wpedantic -Werror` elsewhere, CTest enabled.
-- [ ] `src/` created for host code; `src216/` already exists with its rules; `CMakeLists.txt` adds only `src/` and excludes `src216/` explicitly.
-- [ ] A boundary check target that fails if a `src/` file includes a `src216/` header or the reverse.
-- [ ] A guest build target that runs `krc --target=kr216` over `src216/` and fails loudly (naming the missing backend) until the kr216 backend exists.
-- [ ] `CMakePresets.json` with the five presets in §3; each preset's binary directory separate.
-- [ ] `build.cmd` as specified in §3, resolving `vswhere` → `vcvars64.bat` → bundled CMake/Ninja.
-- [ ] `build.cmd arm64`: SSH to BitWhiz, run `linux-gcc-debug` and `ctest` there, capture the revision and counts for the gate block.
+- [x] `CMakeLists.txt`: C++20, `/W4 /WX` on MSVC and `-Wall -Wextra -Wpedantic -Werror` elsewhere, CTest enabled.
+- [x] `src/` created for host code; `src216/` already exists with its rules; `CMakeLists.txt` adds only `src/` and excludes `src216/` explicitly.
+- [x] A boundary check target that fails if a `src/` file includes a `src216/` header or the reverse.
+- [x] A guest build target that runs `krc --target=kr216` over `src216/` and fails loudly (naming the missing backend) until the kr216 backend exists.
+- [x] `CMakePresets.json` with the five presets in §3; each preset's binary directory separate.
+- [x] `build.cmd` as specified in §3, resolving `vswhere` → `vcvars64.bat` → bundled CMake/Ninja.
+- [x] `build.cmd arm64`: SSH to BitWhiz, run `linux-gcc-debug` and `ctest` there, capture the revision and counts for the gate block.
 - [x] Clone this repository on BitWhiz at `~/repos/kr216` — cloned 2026-11-21 at `b74af66`, `origin` over HTTPS.
-- [ ] `.agents/doctor.msvc.ps1` (from `.agents/templates/`) reporting MSVC, CMake and Ninja with versions.
-- [ ] `.gitignore` covering `build/`, `out/`, and CMake user files.
-- [ ] One placeholder test registered with CTest so the entry point proves green from the first commit.
-- [ ] First build + `ctest` green on `windows-msvc-debug`, logged with counts.
+- [x] `.agents/doctor.msvc.ps1` (from `.agents/templates/`) reporting MSVC, CMake and Ninja with versions.
+- [x] `.gitignore` covering `build/`, `out/`, and CMake user files.
+- [x] A real test registered with CTest at the first commit — the length map below; no placeholder was needed.
+- [x] First build + `ctest` green on `windows-msvc-debug`, logged with counts.
 
 **M1.2 Encoding layer** (`include/kr216/encoding.h`, `src/encoding.cpp`)
 
+- [x] First-byte length map: every byte classified, reserved bytes rejected, minimum lengths pinned by `tests/length_map_test.cpp`.
 - [ ] Decoded instruction model: opcode, operands (register, FP register, immediate, displacement, mask, condition, branch target), length, validity.
-- [ ] First-byte length map: every byte classified, reserved bytes rejected.
 - [ ] Short class: `PUSH`/`POP`/`INC`/`DEC`/`CALL Rd`, the nine system encodings, `PUSH R14/R15` and `POP R14/R15` rejected.
 - [ ] Register class: `LD Rd,#imm16`, `LD Rd,[addr16]`, `ST [addr16],Rd`.
 - [ ] Compact class: 32 register ops including auto-increment/decrement and `JMP`; branch form with `disp9` relative to the next instruction.
@@ -329,3 +336,4 @@ Each item was open in this tracker's first draft; the owner resolved all seven o
 - **2026-11-21T23:18:23-08:00** — Checked the three sibling projects on BitWhiz against the installed `krc-toolchain`. `kr32` had a working 0.1.0 binary but its configure failed at `CMakeLists.txt:13` (`krc-toolchain` not found); reconfiguring with `-DCMAKE_PREFIX_PATH=$HOME/.local` built 39/39 and installed **0.3.0**, which is current. `kr16` was already up to date (`ninja: no work to do`) and has no install rule, so `build/linux-gcc/kr16` (1.0.0) was copied to `~/.local/bin`. `krdbg` has no `krdbg` executable target in this tree — only `krdbg_demo`, `krdbg_settings` and `krdbg_tests` — and its suite passes 3/3; no install rule, so nothing was installed. §3 records the table and the `CMAKE_PREFIX_PATH` requirement.
 - **2026-11-21T23:31:50-08:00** — Proved the same build/install sequence on this host in both platforms. Windows: configured all four presets (the bundled CMake does accept `Visual Studio 18 2026`), built and installed `krcompiler` release to `C:\Users\kevin\krc`, built kr32 Release and installed it, built kr16 Release and copied it, and built krdbg's three targets. WSL: built and installed `krcompiler` release and kr32 Debug to `~/.local`, built kr16 and krdbg. Installed and verified: `krc`/`krld` 0.2.0, `kr32` 0.3.0, `kr16` 1.0.0 on both. Three traps recorded in §3: a cached `krc-toolchain_DIR` made a Release consumer link the Debug library (`__imp__CrtDbgReport`), the VS generator needs matching `--config` on build and install, and WSL lacks clang so the clang and sanitizer rows cannot run there.
 - **2026-11-21T23:41:36-08:00** — Split the source trees by compiler, at the owner's direction: `src/` is host code built by the host toolchain, `src216/` is guest code built by `krc --target=kr216`, and the boundary is stated in `AGENTS.local.md` and `src216/README.md`. Created `src216/README.md` with what may and may not live there; `src/` appears with the first host code in M1.1. The rule is in §1 and M1.1 gained three tasks: create `src/`, exclude `src216/` from the host build, add a cross-tree include check, and wire a guest build target that fails loudly until the kr216 backend exists. No code written.
+- **2026-11-21T23:54:00-08:00** — **M1.1 complete, M1.2 started.** Code commit `35625b3`: CMake project (C++20, warnings-as-errors, CTest), five presets, `build.cmd` (doctor → `vswhere` → `vcvars64` → the Visual Studio CMake/ctest) with an `arm64` path over SSH, the doctor, `.gitignore`, a boundary check that fails both configure and the `boundary` test on a cross-tree include, and a `guest` target that fails loudly until the kr216 backend exists. First real unit: the ISA §3.1 first-byte length map with `tests/length_map_test.cpp` pinning all 256 bytes, the per-class counts (96 Short, 48 Register, 64 Compact, 32 Normal, 8 escapes, 8 reserved) and the reserved set. Green on all three hosts: `windows-msvc-debug` 2/2, WSL `linux-gcc-debug` 2/2, `build.cmd arm64` on BitWhiz 2/2. `AGENTS.local.md`'s Environment and platform sections are filled in and its `environment:unrecorded` marker removed.

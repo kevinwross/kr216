@@ -52,7 +52,7 @@ constexpr Vector kAppendixA[] = {
     {{0x54, 0x34, 0x00}, 3, "ld r4, #0x34"},
     {{0xD3, 0x2B, 0x00}, 3, "setlt r2"},
     {{0xD4, 0x20, 0x03}, 3, "shl r2, #3"},
-    {{0xD9, 0x23}, 3, "div r2, r3"},
+    {{0xD9, 0x23}, 2, "div r2, r3"},
     {{0xDB, 0x40, 0x00}, 3, "sxtb r4"},
     {{0xD0, 0x00, 0x02}, 3, "call 0x0200"},
     {{0xCF, 0x00, 0x02}, 3, "jmp 0x0200"},
@@ -208,7 +208,11 @@ int main() {
             continue;
         }
         const auto cls = kr216::classify(static_cast<std::uint8_t>(byte));
-        if (instruction.length < kr216::minimum_length(cls) || instruction.length > 6) {
+        // DIV/DIVS are the Normal class's documented two-byte exception.
+        const auto minimum = (byte == 0xD9 || byte == 0xDA)
+                                 ? std::uint8_t{2}
+                                 : kr216::minimum_length(cls);
+        if (instruction.length < minimum || instruction.length > 6) {
             std::fprintf(stderr, "FAIL byte 0x%02X: length %u outside the class bounds\n", byte,
                          static_cast<unsigned>(instruction.length));
             ++failures;

@@ -70,6 +70,8 @@ if(KRC_EXECUTABLE AND KRLD_EXECUTABLE)
         "${CMAKE_SOURCE_DIR}/src216/long_literal.c" 42 "long ok")
     add_guest_program_test(guest_runtime
         "${CMAKE_SOURCE_DIR}/src216/runtime.c" 42 "aa")
+    add_guest_program_test(guest_printf
+        "${CMAKE_SOURCE_DIR}/src216/printf.c" 42 "42 ok A ff")
     add_test(NAME guest_kdbg
         COMMAND ${CMAKE_COMMAND}
                 "-DKRC=${KRC_EXECUTABLE}"

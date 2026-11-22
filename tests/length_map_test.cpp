@@ -127,6 +127,19 @@ int main() {
                static_cast<int>(expected_reserved), static_cast<int>(reserved));
     }
 
+    // DIV/DIVS are the Normal class's two-byte exception (Appendix A: `div r2, r3`
+    // is D9 23). A three-byte read would swallow the next instruction.
+    {
+        const std::uint8_t bytes[] = {0xD9, 0x23, 0x89};
+        kr216::Instruction instruction;
+        const auto status = kr216::decode(bytes, sizeof bytes, instruction);
+        if (status != kr216::DecodeStatus::Ok || instruction.op != kr216::Op::Div ||
+            instruction.length != 2) {
+            std::fprintf(stderr, "FAIL DIV length/operation\n");
+            ++failures;
+        }
+    }
+
     if (failures != 0) {
         std::fprintf(stderr, "length_map_test: %d failure(s)\n", failures);
         return 1;

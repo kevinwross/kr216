@@ -299,8 +299,19 @@ DecodeStatus decode_compact(std::uint8_t first, const std::uint8_t* bytes, std::
 
 DecodeStatus decode_normal(std::uint8_t first, const std::uint8_t* bytes, std::size_t size,
                            Instruction& out) noexcept {
-    if (size < 3) return need_more(out);
     const std::uint8_t code = static_cast<std::uint8_t>(first & 0x1F);
+    // DIV and DIVS are the two-byte exception in the Normal class: their
+    // payload is only `RRRR BBBB` (ISA Appendix A, `div r2, r3` = D9 23).
+    if (code == 25 || code == 26) {
+        if (size < 2) return need_more(out);
+        out.length = 2;
+        out.valid = true;
+        out.op = code == 25 ? Op::Div : Op::Divs;
+        out.a = make_register(static_cast<std::uint8_t>(bytes[1] >> 4));
+        out.b = make_register(static_cast<std::uint8_t>(bytes[1] & 0x0F));
+        return DecodeStatus::Ok;
+    }
+    if (size < 3) return need_more(out);
     const std::uint8_t p0 = bytes[1];
     const std::uint8_t p1 = bytes[2];
     const std::uint8_t r = static_cast<std::uint8_t>(p0 >> 4);

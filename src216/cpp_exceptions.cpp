@@ -6,7 +6,7 @@ int main() {
         Guard guard;
         throw Error(42);
     } catch (const Error& error) {
-        return cleaned != 0 ? error.code : 1;
+        return cleaned == 1 ? error.code : 1;
     }
     return 2;
 }

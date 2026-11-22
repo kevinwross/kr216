@@ -78,6 +78,8 @@ if(KRC_EXECUTABLE AND KRLD_EXECUTABLE)
         "${CMAKE_SOURCE_DIR}/src216/aggregate_param.c" 42 "")
     add_guest_program_test(guest_shift32
         "${CMAKE_SOURCE_DIR}/src216/shift32.c" 42 "")
+    add_guest_program_test(guest_shift_dynamic
+        "${CMAKE_SOURCE_DIR}/src216/shift_dynamic.c" 42 "")
     add_guest_program_test(guest_mul32
         "${CMAKE_SOURCE_DIR}/src216/mul32.c" 42 "")
     add_guest_program_test(guest_div32

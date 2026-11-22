@@ -30,6 +30,10 @@ criteria. Read §1, §12, §14 and §16 before implementing; `kr216-isa.md` (thi
   disassembler, image loader and the integration tests. `krdbg` changes stay upstream in
   `..\krdbg`, where the kr216 adapter is the only kr216 code.
 
+**Tracker.** `kr216-impl.md` owns the milestone checklists, gate records and the running log.
+Update it in the same change as the work it describes, and take each log entry's timestamp from
+`local-datetime`.
+
 ## Definition of done
 
 The repository is a plan until M1 creates the emulator, so a change is complete when:

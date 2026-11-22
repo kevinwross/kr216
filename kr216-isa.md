@@ -2,8 +2,9 @@
 
 | | |
 |---|---|
-| Status | Draft 0.1 — normative for encodings, operand rules and trap/SYS detail |
-| Date | 2026-11-21T21:12:27-08:00 |
+| Status | Draft 0.2 — normative for encodings, operand rules and trap/SYS detail; the §15 decision register is approved |
+| Date | 2026-11-21T22:04:42-08:00 |
+| Approval | §15's sixteen decisions approved by the owner, 2026-11-21; changing one is an ISA change under the plan's change policy |
 | Authority | `kr216-plan.md` v0.11 (D1–D34) fixes the shape; this document fixes the exact encodings and semantics the plan delegates to it |
 | Applies to | `kr216-emu`, `kr216-dis`, the krcompiler assembler/encoder, and the kr216 image loader |
 | Open items | section 15 lists every decision this document records that the plan leaves to it, and section 16 what is deferred |

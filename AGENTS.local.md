@@ -61,9 +61,9 @@ preset trio (`cmake --preset linux-gcc-debug`, `cmake --build --preset linux-gcc
 <!-- project:targets:start — generated from .dev-template.json targets; edit the Notes column, not the rows -->
 | Target | Architecture | Verified by | Notes (yours — preserved on update) |
 |---|---|---|---|
-| Windows | x64 | this dev machine, MSVC 19.52.37025 | `build.cmd` green at `2ef3bf9`, 53/53 |
-| Linux | x64 | WSL 2 on this dev machine, GCC 15.2.0 | `linux-gcc-debug` green at `2ef3bf9`, 53/53 |
-| Linux (Raspberry Pi) | ARM64 | BitWhiz (Raspberry Pi 5, Debian 13) over SSH, GCC 14.2.0 | `linux-gcc-debug` green at `2ef3bf9`, 53/53 |
+| Windows | x64 | this dev machine, MSVC 19.52.37025 | `build.cmd` green at `899049d`, 54/54 |
+| Linux | x64 | WSL 2 on this dev machine, GCC 15.2.0 | `linux-gcc-debug` green at `899049d`, 54/54 |
+| Linux (Raspberry Pi) | ARM64 | BitWhiz (Raspberry Pi 5, Debian 13) over SSH, GCC 14.2.0 | `linux-gcc-debug` green at `899049d`, 54/54 |
 
 Target-specific notes:
 
@@ -112,8 +112,8 @@ the Windows SDK, and `cmake 4.3.1-msvc1 (developer environment)`. `build.cmd` ru
 CMake 4.3.1-msvc1 and ctest from that Visual Studio's `Common7\IDE\CommonExtensions\Microsoft\CMake\CMake\bin\`.
 Neither is on `PATH`. Found with `vswhere -latest -requires Microsoft.VisualStudio.Component.VC.Tools.x86.x64`.
 
-**Verified at** `2ef3bf9`: Windows `windows-msvc-debug` → 53/53; WSL `linux-gcc-debug` → 53/53;
-BitWhiz `linux-gcc-debug` → 53/53. The compiler suite is 919/919 on Windows and BitWhiz and 723/723 in WSL at `c71d573`. krdbg is 109/109 on Windows, WSL and BitWhiz at `bcf76ce`, including the kr216 adapter tests.
+**Verified at** `899049d`: Windows `windows-msvc-debug` → 54/54; WSL `linux-gcc-debug` → 54/54;
+BitWhiz `linux-gcc-debug` → 54/54. The compiler suite is 919/919 on Windows and BitWhiz and 723/723 in WSL at `fc3d257`. krdbg is 109/109 on Windows, WSL and BitWhiz at `bcf76ce`, including the kr216 adapter tests. The `density_benchmark` test measures **2.4286 bytes per static instruction** against the 2.5 target.
 
 **Install (requires approval).** Nothing beyond the doctor on Windows. WSL has no clang, so
 `linux-clang-debug` and `linux-sanitize` are blocked there until it is installed (owner

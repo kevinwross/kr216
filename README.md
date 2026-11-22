@@ -86,6 +86,13 @@ override through a base pointer and prints the area scaled by 100. `exceptions.c
 class inside a `try`, verifies that a local destructor ran during unwinding, and catches it by
 reference. `containers.cpp` builds a `std::string` and a `std::vector<int>`.
 
+### Packaged release
+
+`release.cmd` stages `dist/kr216-toolchain/` (binaries, runtime, sysroot, examples and this
+README) and writes `dist/kr216-toolchain.zip`. The extracted tree is self-contained: run
+`examples\build.cmd virtual.cpp` from it without either source checkout. `VERSION.txt` records
+the compiler and emulator revisions.
+
 By hand, the steps are:
 
 ```sh

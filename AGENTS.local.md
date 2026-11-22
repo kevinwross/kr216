@@ -61,9 +61,9 @@ preset trio (`cmake --preset linux-gcc-debug`, `cmake --build --preset linux-gcc
 <!-- project:targets:start — generated from .dev-template.json targets; edit the Notes column, not the rows -->
 | Target | Architecture | Verified by | Notes (yours — preserved on update) |
 |---|---|---|---|
-| Windows | x64 | this dev machine, MSVC 19.52.37025 | `build.cmd` green at `0e799be`, 11/11 |
-| Linux | x64 | WSL 2 on this dev machine, GCC 15.2.0 | `linux-gcc-debug` green at `0e799be`, 11/11 |
-| Linux (Raspberry Pi) | ARM64 | BitWhiz (Raspberry Pi 5, Debian 13) over SSH, GCC 14.2.0 | `linux-gcc-debug` green at `0e799be`, 11/11 |
+| Windows | x64 | this dev machine, MSVC 19.52.37025 | `build.cmd` green at `87491ac`, 13/13 |
+| Linux | x64 | WSL 2 on this dev machine, GCC 15.2.0 | `linux-gcc-debug` green at `87491ac`, 13/13 |
+| Linux (Raspberry Pi) | ARM64 | BitWhiz (Raspberry Pi 5, Debian 13) over SSH, GCC 14.2.0 | `linux-gcc-debug` green at `87491ac`, 13/13 |
 
 Target-specific notes:
 
@@ -112,8 +112,8 @@ the Windows SDK, and `cmake 4.3.1-msvc1 (developer environment)`. `build.cmd` ru
 CMake 4.3.1-msvc1 and ctest from that Visual Studio's `Common7\IDE\CommonExtensions\Microsoft\CMake\CMake\bin\`.
 Neither is on `PATH`. Found with `vswhere -latest -requires Microsoft.VisualStudio.Component.VC.Tools.x86.x64`.
 
-**Verified on** this dev machine **at** `0e799be`: `windows-msvc-debug` build + `ctest` → 11/11;
-WSL `linux-gcc-debug` → 11/11; BitWhiz `linux-gcc-debug` → 11/11.
+**Verified on** this dev machine **at** `87491ac`: `windows-msvc-debug` build + `ctest` → 13/13;
+WSL `linux-gcc-debug` → 13/13; BitWhiz `linux-gcc-debug` → 13/13.
 
 **Install (requires approval).** Nothing beyond the doctor on Windows. WSL has no clang, so
 `linux-clang-debug` and `linux-sanitize` are blocked there until it is installed (owner

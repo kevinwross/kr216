@@ -1,6 +1,6 @@
 # kr216 — Implementation Tracker
 
-**Status:** Plan approved 2026-11-21 (`kr216-plan.md` v0.11); ISA at draft 0.2 with its §15 decision register approved; ABI appendix accepted (`../krcompiler/docs/abi-kr216.md`, ADR 0053). **Current milestone: M1 — not started.**
+**Status:** Plan approved 2026-11-21 (`kr216-plan.md` v0.11); ISA frozen at 1.0; ABI appendix accepted (`../krcompiler/docs/abi-kr216.md`, ADR 0053). **Current milestone: M2 — M1 complete 2026-11-22.**
 **Design contracts:** [`kr216-plan.md`](kr216-plan.md) (scope, decisions, milestones) and [`kr216-isa.md`](kr216-isa.md) (encodings, semantics, traps, SYS).
 **Compiler-side tracker:** [`../krcompiler/implementation.md`](../krcompiler/implementation.md). Work that belongs to the compiler is recorded there (D32) and only referenced here.
 
@@ -116,7 +116,7 @@ Milestone scope and exit criteria are `kr216-plan.md` §16. This table tracks th
 | Milestone | This repository's deliverable | Exit criteria (from the plan) | Status |
 |---|---|---|---|
 | **M0** | plan, compiler contract mapped, ABI appendix started | D1–D34 resolved; Q1–Q29 answered | **complete** 2026-11-21 |
-| **M1** | `kr216-isa.md`, emulator including FPU, disassembler, KRO image loader, test harness | hand-written programs run and pass; every encoding has a vector; FP vectors are bit-exact; `kr216-isa.md` frozen at 1.0 | not started |
+| **M1** | `kr216-isa.md`, emulator including FPU, disassembler, KRO image loader, test harness | hand-written programs run and pass; every encoding has a vector; FP vectors are bit-exact; `kr216-isa.md` frozen at 1.0 | **complete** 2026-11-22, `11/11` on Windows, WSL and BitWhiz |
 | **M2** | VM wiring for krld output; loader against real krcompiler images; `kr216-emu`/`kr216-dis` CLIs | `krc --target=kr216` output links and runs here; round-trip and determinism pass | not started |
 | **M3** | execution of compiler-generated C: ABI (frames, calls, ENTER/LEAVE), differential runs | C programs run and match host output | not started |
 | **M4** | machine-level debug interface (step, run, memory, unwind), KDBG payload handling, console/COM mapping | krdbg drives the emulator; backtraces match expected frames | not started |
@@ -183,12 +183,12 @@ Milestone scope and exit criteria are `kr216-plan.md` §16. This table tracks th
 
 - [x] Parse the KRCompiler image container against its written layout (ADR 0054): magic, target/ABI version, sections, entry, image base, embedded KDBG payload; reject a wrong target ID or ABI version.
 - [x] Reject out-of-range sections and overlapping placements; never write outside the 64 KiB map.
-- [ ] `reset()` reloads the last image and clears state.
+
 
 **M1.5 `kr216-dis`**
 
-- [ ] Read an image (or a raw byte range) and print address, bytes, mnemonic and operands, advancing by the decoded length.
-- [ ] A reserved encoding prints as a trap with its bytes, never as a guess.
+- [x] Read an image and print address, bytes, mnemonic and operands, advancing by the decoded length (`tools/kr216-dis`); a raw byte range waits for the debugger's memory view.
+- [x] A reserved encoding prints as `.byte` with its bytes, never as a guessed instruction.
 
 **M1.6 Conformance harness** (`tests/`)
 
@@ -199,8 +199,8 @@ Milestone scope and exit criteria are `kr216-plan.md` §16. This table tracks th
 - [x] `fp/` — bit-exact vectors: four operations over thirteen values, `FSQRT`/`FNEG`/`FABS`/`FRND`, `FCMP`, `F2I`/`F2U` traps, NaN by `isnan`, infinities, signed zero and subnormals (`tests/fp_test.cpp`).
 - [x] `frames/` — `ENTER`/`LEAVE` for every even frame size 0–254 and three masks, nesting, `alloca` (`tests/frames_test.cpp`).
 - [x] `fuzz/` — 200k random streams from a fixed seed decode deterministically, never overrun the buffer, trap on reserved bytes, and execute for a bounded budget without hanging (`tests/fuzz_test.cpp`).
-- [ ] `traps/` — every vector, the frame layout, `IRET`, trace.
-- [ ] Freeze `kr216-isa.md` at 1.0 when every vector passes, recording the freeze in the ISA header and the log.
+- [x] `traps/` — every vector, the frame layout, `IRET`, trace, nested traps and the no-room fault (`tests/traps_test.cpp`).
+- [x] `kr216-isa.md` frozen at 1.0 with a change log, once every Appendix A vector passed.
 
 ### M2 — the compiler's images run here
 
@@ -218,6 +218,7 @@ Milestone scope and exit criteria are `kr216-plan.md` §16. This table tracks th
 ### M4 — debugger interface and unwinding
 
 - [ ] Machine-level interface for `krdbg` `IDebugTarget`: step, budgeted run, halted/fault states, layout, register and memory access, disassembly, unwind, retired-instruction count, reset.
+- [ ] `reset()` reloads the last image and clears state (moved here from M1.4: it needs the debug interface's image handle).
 - [ ] Console maps to the `out`/`in`/`status` COM contract; `video()` reports absent.
 - [ ] Backtrace through a known call chain matches expected frames (`frame = 0`, return PC at `FP + 2`).
 - [ ] krdbg's variable-length disassembly change has landed upstream; it was raised there in 2026-11 rather than waiting for this milestone (§8, Q23).
@@ -342,3 +343,5 @@ Each item was open in this tracker's first draft; the owner resolved all seven o
 - **2026-11-22T00:16:15-08:00** — **M1.3 complete and M1.4 mostly done.** Compiler-side ADR 0054 (`2e6f9f2`) fixes the `K216` container: 64-byte header with magic, container and ABI versions, target ID 4, entry, base, table offsets, file size and optional CRC32; 32-byte section records in the `.kex` shape; the `0x0100`–`0xFEFF` allocated window and overlap rejection. `src/image.cpp` validates every field before copying and writes the entry into the reset vector; `tests/image_test.cpp` builds the exact bytes the M2 writer must emit, runs a real image to exit 42 and pins seven rejection cases. The CLI (`tools/kr216-emu`) loads, runs with a budget and reports the stop reason. The tests' first run found the builder's missing trailing NUL in the string table — a good sign that the format is pinned byte for byte. Green: Windows 5/5, WSL 5/5, BitWhiz 5/5 at `4f7ef7d`.
 - **2026-11-22T00:18:35-08:00** — Added the canonical-equivalence and decoder-fuzz suites at `bbd59e5`, both green on the first run on all three hosts (7/7). `canonical_test` runs 40 short forms against their `F0` equivalents on two identical machines and compares every register but PC, the flags, F0–F3 and the data and stack windows; `fuzz_test` decodes 200k random streams from a fixed seed, checks deterministic decoding, buffer bounds, the reserved-byte rule and six-byte completeness, and executes every hundredth stream for a bounded budget. GCC caught two unused symbols the MSVC build accepted (an unused typedef and an unused helper), which is why the Linux row matters. M1.6 now has vectors, semantics, canonical and fuzz ticked; modes, fp, frames, traps and the ISA freeze remain.
 - **2026-11-22T00:23:05-08:00** — Added the addressing-mode, FP and frame suites at `bbdac30`, green on all three hosts (10/10). `modes_test` runs the full five-mode × six-register × byte/word × load/store matrix and checks the effective address, the transferred bytes and the base update separately, plus absolute and PC-relative bases; `fp_test` compares 676 arithmetic cases, ten unary cases, five compares and the conversion edge cases against the host's IEEE binary64, treating NaN by `isnan` because its payload differs between x86 and ARM; `frames_test` covers every even frame size 0–254 with three masks, `LEAVE` restoration, `alloca` and nesting. **The frame test found two mistakes of mine on its first run:** `F7` carries an 8-bit frame (four bytes, not five), and the mask block grows from the lowest address with descending register number — both now pinned. M1.6 has only `traps/` and the ISA 1.0 freeze left; the `kr216-dis` tool and the loader's reset-reload item also remain.
+
+- **2026-11-22T00:25:00-08:00** — **M1 complete; ISA frozen at 1.0.** `traps_test` covers the four vectors (BRK, illegal encoding, unknown SYS and divide-by-zero, null page and reserved window), the six-byte frame, EFP chaining, `IRET`, the trace flag, a trap inside a handler, and the two no-room cases (a trap with SP too low and `IRET` with no frame), both of which stop the machine as `Faulted`. Writing it corrected three of my expectations, not the machine: a breakpoint saves the BRK's own address, and `IRET` restores `T`, so a traced `IRET` immediately re-enters the handler. `tools/kr216-dis` prints a real image (`0200: 52 2A 00  ld r2, #0x2A`), and both CLIs ran the same hand-built image end to end (`kr216-emu` exit 42). `kr216-isa.md` is frozen 1.0 with a change log: every Appendix A vector passes, the short forms match their `F0` equivalents, and the FP vectors are bit-exact. Green: Windows 11/11, WSL 11/11, BitWhiz 11/11 at `0e799be`.

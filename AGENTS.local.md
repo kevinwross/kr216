@@ -36,7 +36,8 @@ Update it in the same change as the work it describes, and take each log entry's
 
 ## Definition of done
 
-The repository is a plan until M1 creates the emulator, so a change is complete when:
+The repository has the emulator, disassembler, image loader and the conformance suites, so a
+change is complete when:
 
 - [ ] Every section, file and decision the changed text cites exists, and the counts the header
       states match the tables (`D1–D34`, `Q1–Q29`).
@@ -48,13 +49,9 @@ The repository is a plan until M1 creates the emulator, so a change is complete 
       evidence, in the shape of `.agents/templates/review-report.md`.
 - [ ] No secrets, debug output, or unrelated edits in the diff.
 
-When M1 lands the emulator, disassembler and image loader, replace this list with the commands
-that then exist: the configure/build entry point, the encoding-vector and canonical-equivalence
-runs, the bit-exact FP suite, and the decoder fuzz target.
-
-The commands that exist today are `build.cmd` (Windows), `build.cmd arm64` (BitWhiz over SSH),
-and the Linux preset trio (`cmake --preset linux-gcc-debug`, `cmake --build --preset
-linux-gcc-debug`, `ctest --preset linux-gcc-debug`).
+The commands are `build.cmd` (Windows), `build.cmd arm64` (BitWhiz over SSH), and the Linux
+preset trio (`cmake --preset linux-gcc-debug`, `cmake --build --preset linux-gcc-debug`,
+`ctest --preset linux-gcc-debug`).
 
 ## Platform targets
 

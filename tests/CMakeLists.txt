@@ -9,3 +9,7 @@ add_test(NAME vectors COMMAND vector_test)
 add_executable(machine_test machine_test.cpp)
 target_link_libraries(machine_test PRIVATE kr216_core)
 add_test(NAME machine COMMAND machine_test)
+
+add_executable(image_test image_test.cpp)
+target_link_libraries(image_test PRIVATE kr216_core)
+add_test(NAME image COMMAND image_test)

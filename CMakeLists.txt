@@ -21,6 +21,7 @@ include("${CMAKE_CURRENT_SOURCE_DIR}/cmake/CheckBoundary.cmake")
 unset(SOURCE_ROOT)
 
 add_subdirectory(src)
+add_subdirectory(tools)
 add_subdirectory(tests)
 
 # Guest code (src216/) is compiled by `krc --target=kr216`, never by this build. The target

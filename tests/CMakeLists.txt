@@ -13,3 +13,11 @@ add_test(NAME machine COMMAND machine_test)
 add_executable(image_test image_test.cpp)
 target_link_libraries(image_test PRIVATE kr216_core)
 add_test(NAME image COMMAND image_test)
+
+add_executable(canonical_test canonical_test.cpp)
+target_link_libraries(canonical_test PRIVATE kr216_core)
+add_test(NAME canonical COMMAND canonical_test)
+
+add_executable(fuzz_test fuzz_test.cpp)
+target_link_libraries(fuzz_test PRIVATE kr216_core)
+add_test(NAME fuzz COMMAND fuzz_test)

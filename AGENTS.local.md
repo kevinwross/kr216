@@ -61,9 +61,9 @@ preset trio (`cmake --preset linux-gcc-debug`, `cmake --build --preset linux-gcc
 <!-- project:targets:start — generated from .dev-template.json targets; edit the Notes column, not the rows -->
 | Target | Architecture | Verified by | Notes (yours — preserved on update) |
 |---|---|---|---|
-| Windows | x64 | this dev machine, MSVC 19.52.37025 | `build.cmd` green at `915d748`, 20/20 |
-| Linux | x64 | WSL 2 on this dev machine, GCC 15.2.0 | `linux-gcc-debug` green at `caeb3c4`, 17/17 (M3 row; 20/20 not yet rerun) |
-| Linux (Raspberry Pi) | ARM64 | BitWhiz (Raspberry Pi 5, Debian 13) over SSH, GCC 14.2.0 | `linux-gcc-debug` green at `caeb3c4`, 17/17 (M3 row; 20/20 not yet rerun) |
+| Windows | x64 | this dev machine, MSVC 19.52.37025 | `build.cmd` green at `ccf9842`, 24/24 |
+| Linux | x64 | WSL 2 on this dev machine, GCC 15.2.0 | `linux-gcc-debug` green at `caeb3c4`, 17/17 (M3 row; 24/24 not yet rerun) |
+| Linux (Raspberry Pi) | ARM64 | BitWhiz (Raspberry Pi 5, Debian 13) over SSH, GCC 14.2.0 | `linux-gcc-debug` green at `caeb3c4`, 17/17 (M3 row; 24/24 not yet rerun) |
 
 Target-specific notes:
 
@@ -112,8 +112,8 @@ the Windows SDK, and `cmake 4.3.1-msvc1 (developer environment)`. `build.cmd` ru
 CMake 4.3.1-msvc1 and ctest from that Visual Studio's `Common7\IDE\CommonExtensions\Microsoft\CMake\CMake\bin\`.
 Neither is on `PATH`. Found with `vswhere -latest -requires Microsoft.VisualStudio.Component.VC.Tools.x86.x64`.
 
-**Verified on** this dev machine **at** `915d748`: `windows-msvc-debug` build + `ctest` → 20/20;
-WSL and BitWhiz still record the M3 17/17 row at `caeb3c4`; the post-M3 20/20 rows have not been rerun.
+**Verified on** this dev machine **at** `ccf9842`: `windows-msvc-debug` build + `ctest` → 24/24;
+WSL and BitWhiz still record the M3 17/17 row at `caeb3c4`; the post-M3 24/24 rows have not been rerun.
 
 **Install (requires approval).** Nothing beyond the doctor on Windows. WSL has no clang, so
 `linux-clang-debug` and `linux-sanitize` are blocked there until it is installed (owner

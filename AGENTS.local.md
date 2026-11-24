@@ -49,7 +49,7 @@ change is complete when:
       evidence, in the shape of `.agents/templates/review-report.md`.
 - [ ] No secrets, debug output, or unrelated edits in the diff.
 
-The commands are `build.cmd` (Windows), `build.cmd arm64` (BitWhiz over SSH), and the Linux
+The commands are `build.cmd` (Windows, and a wrapper over the preset only), and the Linux
 preset trio (`cmake --preset linux-gcc-debug`, `cmake --build --preset linux-gcc-debug`,
 `ctest --preset linux-gcc-debug`).
 

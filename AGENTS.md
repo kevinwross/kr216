@@ -13,10 +13,9 @@ kr216 is the architecture of a 16-bit virtual CPU designed as a first-class C++ 
 <!-- project:summary -->
 
 ```sh
-# Windows: the doctor, then configure, build and ctest for windows-msvc-debug.
+# Windows: resolve the toolchain through vswhere, then the preset does the rest.
 build.cmd
-# ARM64 on BitWhiz over SSH: the same preset and ctest.
-build.cmd arm64
+# ARM64 on BitWhiz: the family gate owns that host now (../kr232/scripts/check-family.ps1 -Arm64).
 # Linux (WSL and BitWhiz): the presets are the entry point.
 cmake --preset linux-gcc-debug
 cmake --build --preset linux-gcc-debug

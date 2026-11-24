@@ -1,6 +1,10 @@
 {
   "version": 6,
-  "cmakeMinimumRequired": { "major": 3, "minor": 25, "patch": 0 },
+  "cmakeMinimumRequired": {
+    "major": 3,
+    "minor": 25,
+    "patch": 0
+  },
   "configurePresets": [
     {
       "name": "windows-msvc-debug",
@@ -19,14 +23,19 @@
       "displayName": "Linux x64 GCC Debug",
       "generator": "Ninja",
       "binaryDir": "${sourceDir}/build/linux-gcc-debug",
-      "cacheVariables": { "CMAKE_BUILD_TYPE": "Debug" }
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Debug"
+      }
     },
     {
       "name": "linux-clang-debug",
       "displayName": "Linux x64 Clang Debug",
       "generator": "Ninja",
       "binaryDir": "${sourceDir}/build/linux-clang-debug",
-      "cacheVariables": { "CMAKE_BUILD_TYPE": "Debug", "CMAKE_CXX_COMPILER": "clang++" }
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Debug",
+        "CMAKE_CXX_COMPILER": "clang++"
+      }
     },
     {
       "name": "linux-sanitize",
@@ -39,20 +48,89 @@
         "CMAKE_CXX_FLAGS": "-fsanitize=address,undefined -fno-omit-frame-pointer",
         "CMAKE_EXE_LINKER_FLAGS": "-fsanitize=address,undefined"
       }
+    },
+    {
+      "name": "linux-gcc-release",
+      "displayName": "Linux x64, GCC, Ninja, Release",
+      "generator": "Ninja",
+      "binaryDir": "${sourceDir}/build/linux-gcc-release",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Release"
+      }
     }
   ],
   "buildPresets": [
-    { "name": "windows-msvc-debug", "configurePreset": "windows-msvc-debug", "configuration": "Debug" },
-    { "name": "windows-msvc-release", "configurePreset": "windows-msvc-release", "configuration": "Release" },
-    { "name": "linux-gcc-debug", "configurePreset": "linux-gcc-debug" },
-    { "name": "linux-clang-debug", "configurePreset": "linux-clang-debug" },
-    { "name": "linux-sanitize", "configurePreset": "linux-sanitize" }
+    {
+      "name": "windows-msvc-debug",
+      "configurePreset": "windows-msvc-debug",
+      "configuration": "Debug"
+    },
+    {
+      "name": "windows-msvc-release",
+      "configurePreset": "windows-msvc-release",
+      "configuration": "Release"
+    },
+    {
+      "name": "linux-gcc-debug",
+      "configurePreset": "linux-gcc-debug"
+    },
+    {
+      "name": "linux-clang-debug",
+      "configurePreset": "linux-clang-debug"
+    },
+    {
+      "name": "linux-sanitize",
+      "configurePreset": "linux-sanitize"
+    },
+    {
+      "name": "linux-gcc-release",
+      "configurePreset": "linux-gcc-release"
+    }
   ],
   "testPresets": [
-    { "name": "windows-msvc-debug", "configurePreset": "windows-msvc-debug", "configuration": "Debug", "output": { "outputOnFailure": true } },
-    { "name": "windows-msvc-release", "configurePreset": "windows-msvc-release", "configuration": "Release", "output": { "outputOnFailure": true } },
-    { "name": "linux-gcc-debug", "configurePreset": "linux-gcc-debug", "output": { "outputOnFailure": true } },
-    { "name": "linux-clang-debug", "configurePreset": "linux-clang-debug", "output": { "outputOnFailure": true } },
-    { "name": "linux-sanitize", "configurePreset": "linux-sanitize", "output": { "outputOnFailure": true } }
+    {
+      "name": "windows-msvc-debug",
+      "configurePreset": "windows-msvc-debug",
+      "configuration": "Debug",
+      "output": {
+        "outputOnFailure": true
+      }
+    },
+    {
+      "name": "windows-msvc-release",
+      "configurePreset": "windows-msvc-release",
+      "configuration": "Release",
+      "output": {
+        "outputOnFailure": true
+      }
+    },
+    {
+      "name": "linux-gcc-debug",
+      "configurePreset": "linux-gcc-debug",
+      "output": {
+        "outputOnFailure": true
+      }
+    },
+    {
+      "name": "linux-clang-debug",
+      "configurePreset": "linux-clang-debug",
+      "output": {
+        "outputOnFailure": true
+      }
+    },
+    {
+      "name": "linux-sanitize",
+      "configurePreset": "linux-sanitize",
+      "output": {
+        "outputOnFailure": true
+      }
+    },
+    {
+      "name": "linux-gcc-release",
+      "configurePreset": "linux-gcc-release",
+      "output": {
+        "outputOnFailure": true
+      }
+    }
   ]
 }

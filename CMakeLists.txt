@@ -20,29 +20,22 @@ set(SOURCE_ROOT "${CMAKE_CURRENT_SOURCE_DIR}")
 include("${CMAKE_CURRENT_SOURCE_DIR}/cmake/CheckBoundary.cmake")
 unset(SOURCE_ROOT)
 
-set(KRC_EXECUTABLE "" CACHE FILEPATH "krc executable used by guest program tests")
-set(KRLD_EXECUTABLE "" CACHE FILEPATH "krld executable used by guest program tests")
-if(NOT KRC_EXECUTABLE OR NOT KRLD_EXECUTABLE)
-    if(WIN32)
-        set(_krc_suffix ".exe")
-    else()
-        set(_krc_suffix "")
-    endif()
-    set(_compiler_root "${CMAKE_CURRENT_SOURCE_DIR}/../krcompiler/build")
-    foreach(_preset windows-msvc-debug linux-gcc-debug)
-        if(NOT KRC_EXECUTABLE AND
-           EXISTS "${_compiler_root}/${_preset}/host/bin/Debug/krc${_krc_suffix}")
-            set(KRC_EXECUTABLE
-                "${_compiler_root}/${_preset}/host/bin/Debug/krc${_krc_suffix}"
-                CACHE FILEPATH "krc executable used by guest program tests" FORCE)
-        endif()
-        if(NOT KRLD_EXECUTABLE AND
-           EXISTS "${_compiler_root}/${_preset}/host/bin/Debug/krld${_krc_suffix}")
-            set(KRLD_EXECUTABLE
-                "${_compiler_root}/${_preset}/host/bin/Debug/krld${_krc_suffix}"
-                CACHE FILEPATH "krld executable used by guest program tests" FORCE)
-        endif()
-    endforeach()
+# The guest tests need krc and krld. Asking for them is explicit, because a
+# configure that finds nothing used to register no rows and still report success:
+# with the option ON the toolchain is required and its absence stops the
+# configure, and with it OFF no row is registered and the configure says so.
+option(KR216_BUILD_GUEST_TESTS "Build the guest program tests, which need krc and krld" OFF)
+set(KRC_EXECUTABLE "" CACHE FILEPATH "krc executable used by guest program tests (legacy alias)")
+set(KRLD_EXECUTABLE "" CACHE FILEPATH "krld executable used by guest program tests (legacy alias)")
+set(KRG_KRC "" CACHE FILEPATH "krc executable used by guest program tests")
+set(KRG_KRLD "" CACHE FILEPATH "krld executable used by guest program tests")
+set(KRG_LEGACY_KRC "${KRC_EXECUTABLE}")
+set(KRG_LEGACY_KRLD "${KRLD_EXECUTABLE}")
+include("${CMAKE_CURRENT_SOURCE_DIR}/cmake/KrGuest.cmake")
+if(KR216_BUILD_GUEST_TESTS)
+    krguest_find_toolchain()
+else()
+    message(STATUS "guest program tests are off: pass -DKR216_BUILD_GUEST_TESTS=ON to run them")
 endif()
 
 add_subdirectory(src)

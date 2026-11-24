@@ -47,12 +47,12 @@ add_test(NAME k216_disassembly
             -DIMAGE=${CMAKE_CURRENT_SOURCE_DIR}/fixtures/kr216/hello.k216
             -P ${CMAKE_SOURCE_DIR}/cmake/CheckDisassembly.cmake)
 
-if(KRC_EXECUTABLE AND KRLD_EXECUTABLE)
+if(KR216_BUILD_GUEST_TESTS)
     function(add_guest_program_test name source expect_exit expect_output)
         add_test(NAME ${name}
             COMMAND ${CMAKE_COMMAND}
-                    "-DKRC=${KRC_EXECUTABLE}"
-                    "-DKRLD=${KRLD_EXECUTABLE}"
+                    "-DKRC=${KRG_KRC}"
+                    "-DKRLD=${KRG_KRLD}"
                     "-DEMU=$<TARGET_FILE:kr216_emu>"
                     "-DSOURCE_ROOT=${CMAKE_SOURCE_DIR}"
                     "-DSOURCE=${source}"
@@ -64,8 +64,8 @@ if(KRC_EXECUTABLE AND KRLD_EXECUTABLE)
 
     add_test(NAME density_benchmark
         COMMAND ${CMAKE_COMMAND}
-                "-DKRC=${KRC_EXECUTABLE}"
-                "-DKRLD=${KRLD_EXECUTABLE}"
+                "-DKRC=${KRG_KRC}"
+                "-DKRLD=${KRG_KRLD}"
                 "-DBENCH=$<TARGET_FILE:kr216-bench>"
                 "-DSOURCE_ROOT=${CMAKE_SOURCE_DIR}"
                 "-DWORK=${CMAKE_CURRENT_BINARY_DIR}/density_benchmark"
@@ -155,8 +155,8 @@ if(KRC_EXECUTABLE AND KRLD_EXECUTABLE)
         "${CMAKE_SOURCE_DIR}/src216/signed_div.c" 42 "")
     add_test(NAME guest_init_array
         COMMAND ${CMAKE_COMMAND}
-                "-DKRC=${KRC_EXECUTABLE}"
-                "-DKRLD=${KRLD_EXECUTABLE}"
+                "-DKRC=${KRG_KRC}"
+                "-DKRLD=${KRG_KRLD}"
                 "-DEMU=$<TARGET_FILE:kr216_emu>"
                 "-DSOURCE_ROOT=${CMAKE_SOURCE_DIR}"
                 "-DSOURCE=${CMAKE_SOURCE_DIR}/src216/init_array.s"
@@ -166,8 +166,8 @@ if(KRC_EXECUTABLE AND KRLD_EXECUTABLE)
                 -P ${CMAKE_SOURCE_DIR}/cmake/BuildGuestProgram.cmake)
     add_test(NAME guest_kdbg
         COMMAND ${CMAKE_COMMAND}
-                "-DKRC=${KRC_EXECUTABLE}"
-                "-DKRLD=${KRLD_EXECUTABLE}"
+                "-DKRC=${KRG_KRC}"
+                "-DKRLD=${KRG_KRLD}"
                 "-DEMU=$<TARGET_FILE:kr216_emu>"
                 "-DSOURCE_ROOT=${CMAKE_SOURCE_DIR}"
                 "-DSOURCE=${CMAKE_SOURCE_DIR}/src216/hello.c"
@@ -178,8 +178,8 @@ if(KRC_EXECUTABLE AND KRLD_EXECUTABLE)
                 -P ${CMAKE_SOURCE_DIR}/cmake/BuildGuestProgram.cmake)
     add_test(NAME guest_abi_callee_saved
         COMMAND ${CMAKE_COMMAND}
-                -DKRC=${KRC_EXECUTABLE}
-                -DKRLD=${KRLD_EXECUTABLE}
+                -DKRC=${KRG_KRC}
+                -DKRLD=${KRG_KRLD}
                 -DEMU=$<TARGET_FILE:kr216_emu>
                 -DSOURCE_ROOT=${CMAKE_SOURCE_DIR}
                 -DSOURCE=${CMAKE_SOURCE_DIR}/src216/abi_callee.s

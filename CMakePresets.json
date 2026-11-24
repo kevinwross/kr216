@@ -57,6 +57,16 @@
       "cacheVariables": {
         "CMAKE_BUILD_TYPE": "Release"
       }
+    },
+    {
+      "name": "linux-arm64-release",
+      "displayName": "Linux ARM64, GCC, Ninja, Release",
+      "generator": "Ninja",
+      "binaryDir": "${sourceDir}/build/linux-arm64-release",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Release",
+        "CMAKE_CXX_COMPILER": "g++"
+      }
     }
   ],
   "buildPresets": [
@@ -85,6 +95,10 @@
     {
       "name": "linux-gcc-release",
       "configurePreset": "linux-gcc-release"
+    },
+    {
+      "name": "linux-arm64-release",
+      "configurePreset": "linux-arm64-release"
     }
   ],
   "testPresets": [
@@ -130,6 +144,16 @@
       "configurePreset": "linux-gcc-release",
       "output": {
         "outputOnFailure": true
+      }
+    },
+    {
+      "name": "linux-arm64-release",
+      "configurePreset": "linux-arm64-release",
+      "output": {
+        "outputOnFailure": true
+      },
+      "execution": {
+        "jobs": 4
       }
     }
   ]

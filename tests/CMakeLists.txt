@@ -44,7 +44,7 @@ add_test(NAME k216_image COMMAND k216_image_test)
 add_test(NAME k216_disassembly
     COMMAND ${CMAKE_COMMAND}
             -DDISASSEMBLER=$<TARGET_FILE:kr216_dis>
-            -DIMAGE=${CMAKE_CURRENT_SOURCE_DIR}/fixtures/kr216/hello.k216
+            -DIMAGE=${CMAKE_CURRENT_SOURCE_DIR}/fixtures/kr216/hello.kr216
             -P ${CMAKE_CURRENT_SOURCE_DIR}/../cmake/CheckDisassembly.cmake)
 
 if(KR216_BUILD_GUEST_TESTS)

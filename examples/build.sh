@@ -36,5 +36,5 @@ fi
 "$krc" -c --target=kr216 "$runtime/libc.c" -o "$work/libc.kro"
 "$krc" -c --target=kr216 "$root/examples/$source" --sysroot "$sysroot" -o "$work/example.kro"
 "$krld" --gc-sections "$work/crt0.kro" "$work/syscalls.kro" "$work/eh.kro" \
-    "$work/libc.kro" "$work/example.kro" -o "$work/example.k216"
-"$emu" "$work/example.k216"
+    "$work/libc.kro" "$work/example.kro" -o "$work/example.kr216"
+"$emu" "$work/example.kr216"

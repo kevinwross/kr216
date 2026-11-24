@@ -67,7 +67,7 @@ pass on Windows, WSL and BitWhiz.
 ## Build and run a C++ program
 
 The examples are self-contained. Each script compiles the runtime, compiles the example with
-the kr216 sysroot, links a `.k216` image and runs it on the emulator:
+the kr216 sysroot, links a `.kr216` image and runs it on the emulator:
 
 ```powershell
 examples\build.cmd virtual.cpp
@@ -103,8 +103,8 @@ krc -c --target=kr216 runtime/syscalls.s -o syscalls.kro
 krc -c --target=kr216 runtime/eh.s -o eh.kro
 krc -c --target=kr216 runtime/libc.c -o libc.kro
 krc -c --target=kr216 hello.cpp -o hello.kro
-krld --gc-sections crt0.kro syscalls.kro eh.kro libc.kro hello.kro -o hello.k216
-kr216-emu hello.k216
+krld --gc-sections crt0.kro syscalls.kro eh.kro libc.kro hello.kro -o hello.kr216
+kr216-emu hello.kr216
 ```
 
 Each example prints its result and returns 42 from `main`. `kr216-bench` reports the guest exit
@@ -112,12 +112,12 @@ code together with code size and instruction counts.
 
 ## Debugging
 
-The `krdbg` adapter loads a `.k216` image, breaks on functions and source lines, shows the kr216
+The `krdbg` adapter loads a `.kr216` image, breaks on functions and source lines, shows the kr216
 registers, walks the variable-length instruction stream and exposes KDBG locals and frames.
 From a krdbg build with `-DKRDBG_KR216_ADAPTER=ON`:
 
 ```sh
-krdbg --kr216 examples/build/example.k216
+krdbg --kr216 examples/build/example.kr216
 ```
 
 ## Layout

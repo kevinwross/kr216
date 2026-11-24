@@ -1009,8 +1009,8 @@ change is a prerequisite for the M4 debug milestone.
 
 **Debug information and loading.** The kr216 image carries a KDBG payload (target ID 4), in the
 image by default, matching KR32; `krld --debug-file` may still write an optional sidecar, which
-is worth it only for a very small image. The vendored reader recognises only the KR32 `.k32`
-and KR16 `.kex` containers; for the kr216 container the adapter extracts the payload and calls
+is worth it only for a very small image. The vendored reader recognises only the KR32 `.kr32`
+and KR16 `.kr16` containers; for the kr216 container the adapter extracts the payload and calls
 `read_payload`, checking `image_base` itself. The image writer must therefore define the base
 the payload was built for. Container support belongs upstream in KRCompiler and is re-vendored,
 not patched in krdbg.
@@ -1052,11 +1052,11 @@ fields and 16-bit target addresses. Sections: `.text`, `.rodata`, `.data`, `.bss
 travels in KDBG (also target ID 4). Relocations are the common absolute and PC-relative
 families, plus kr216 branch relaxation between `CALL rel9` and `CALL addr16`. The image the
 emulator loads is a KRCompiler image container (D33) — magic, target/ABI version, sections,
-entry, image base and the KDBG payload — not ELF. Like KR32's `.k32`, it carries the sections
+entry, image base and the KDBG payload — not ELF. Like KR32's `.kr32`, it carries the sections
 and a KDBG payload, so the debugger gets debug information from the same file it runs (D31).
 `krld --debug-file` can still split the payload into a sidecar for a very small image.
 
-Because the vendored KDBG reader recognises only the KR32 `.k32` and KR16 `.kex` containers, the
+Because the vendored KDBG reader recognises only the KR32 `.kr32` and KR16 `.kr16` containers, the
 kr216 debug adapter extracts the payload from the kr216 container, calls `read_payload`, and
 checks `image_base` itself; container support belongs upstream in KRCompiler, not in a patched
 reader (section 11.8).
@@ -1230,7 +1230,7 @@ runtime or debug format quietly assumed 32-bit words.
 | D30 | Debug/VM contract: FP is maintained in every function (KDBG `frame = 0`, return PC at `FP+2`, locals negative); the image carries a KDBG payload with a defined `image_base`; the console maps to krdbg's `out`/`in`/`status` COM contract; the VM exposes a monotonic instruction counter | Accepted |
 | D31 | KDBG payloads are embedded in the image by default, matching KR32's in-image pattern; `krld --debug-file` may write an optional sidecar, which is the preferred form only for very small images | Accepted |
 | D32 | Compiler-side work — the data-model ADR, `this_register` schema change, 16-bit EH descriptor, `docs/abi-kr216.md` and the backend — lives in the krcompiler repository; this repository owns the ISA, emulator and integration tests | Accepted |
-| D33 | The kr216 image is a KRCompiler container with magic, target/ABI version, sections, entry, image base and the embedded KDBG payload, like KR32's `.k32`; the emulator loader parses it | Accepted |
+| D33 | The kr216 image is a KRCompiler container with magic, target/ABI version, sections, entry, image base and the embedded KDBG payload, like KR32's `.kr32`; the emulator loader parses it | Accepted |
 | D34 | `F0`'s canonical layout: a one-byte operation code, then two 7-bit operand specifiers in two bytes with two reserved bits, then extension words for an immediate or a 16-bit displacement; 4–6 bytes, giving the generic form its own 256-operation space | Accepted |
 
 ## 15. Resolved questions
@@ -1262,7 +1262,7 @@ runtime or debug format quietly assumed 32-bit words.
 | Q23 | krdbg advances disassembly rows by a fixed `instruction_alignment`; kr216 is variable-length. Who changes? | **krdbg changes**: `TargetLayout` gains a variable-length mode and the surface advances rows by `InstructionView::length`. The adapter cannot compensate. Prerequisite for the M4 debug milestone. |
 | Q24 | How should `float` arithmetic be evaluated on a binary64-only FPU? | **Strict binary32** (D21): the backend computes in binary64 and rounds after each f32 op with the new `FRND` instruction; `FLT_EVAL_METHOD = 0`, one extra instruction per f32 arithmetic op, no compiler front-end change. |
 | Q25 | How do memory-class aggregates cross calls on kr216? | **ADR 0046 pointer + R6 destination**: an aggregate argument is an invisible pointer to a caller-owned copy (one argument word, callee copies); a memory-class return destination is loaded into R6 before CALL, so R2–R5 stay argument registers. |
-| Q26 | What is the kr216 loadable image? | **A KRCompiler container** (D33): magic, target/ABI, sections, entry, image base and the embedded KDBG payload, like KR32's `.k32`; the emulator loader parses it. |
+| Q26 | What is the kr216 loadable image? | **A KRCompiler container** (D33): magic, target/ABI, sections, entry, image base and the embedded KDBG payload, like KR32's `.kr32`; the emulator loader parses it. |
 | Q27 | What do we write next? | **`kr216-isa.md` and `docs/abi-kr216.md` in parallel.** They define the instruction semantics, trap/boot/SYS detail and the ABI, after which implementation planning has stable contracts. |
 | Q28 | D25 promises `string`/`vector`/`map`, but KRCompiler ships them at v1.2/v1.3. | **Accept the compiler ladder**: `string`/`vector` at v1.2, `map` at v1.3; the roadmap wording says so and no extra work is scheduled. |
 | Q29 | When do the literal-typing fix and krdbg's variable-length change land? | **Before their dependent milestones**: literal typing before M3 arithmetic tests, krdbg before M4 debug. Both are upstream blockers, not workarounds. |
@@ -1292,7 +1292,7 @@ compiler target consumes.
 | Narrow-target literal typing rejects `long` constants (`long x = 32768;`) | High | Medium | Fix upstream before arithmetic fixtures; add the regression test |
 | The first 16-bit C++ target exposes 32-bit assumptions in the IR, ABI, EH runtime or debug format | High | High | Vertical slices: C subset → classes → exceptions; differential tests; KDBG frame invariants |
 | krdbg's fixed `instruction_alignment` misrenders variable-length disassembly | High | Medium | Upstream krdbg change before M4 (Q23); the adapter cannot compensate |
-| KDBG payload/container mismatch: the vendored reader knows only `.k32`/`.kex` | Medium | Medium | Embed the payload, use `read_payload`, check `image_base`; container support belongs upstream in KRCompiler |
+| KDBG payload/container mismatch: the vendored reader knows only `.kr32`/`.kr16` | Medium | Medium | Embed the payload, use `read_payload`, check `image_base`; container support belongs upstream in KRCompiler |
 | Backend effort or schedule outside this repository | Medium | High | Budget roughly 2k backend lines plus assembler and runtime; the ISA and emulator remain independently useful |
 | `krcompiler` needs an ISA feature the plan lacks (32-bit ops, different addressing) | Medium | Medium | The escape class can absorb additions under the ISA change policy (ADR + feature flag + golden vectors) |
 | 64 KiB is too small for real C++ | Medium | Medium | Accept for v1; escape-class banking later; measure `_end` on the corpus |

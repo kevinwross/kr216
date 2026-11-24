@@ -44,7 +44,7 @@ if(DEFINED EXTRA_SOURCE AND NOT EXTRA_SOURCE STREQUAL "")
     list(APPEND objects "${WORK}/extra.kro")
 endif()
 
-set(image "${WORK}/program.k216")
+set(image "${WORK}/program.kr216")
 execute_process(
     COMMAND "${KRLD}" ${objects} -o "${image}"
     OUTPUT_VARIABLE link_output

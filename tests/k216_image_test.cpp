@@ -53,7 +53,7 @@ bool same_state(const kr216::CpuState& left, const kr216::CpuState& right) {
 }
 
 void test_fixture_runs_twice() {
-    const std::string path = std::string(KR216_FIXTURE_DIR) + "/hello.k216";
+    const std::string path = std::string(KR216_FIXTURE_DIR) + "/hello.kr216";
     const auto bytes = read_file(path);
     check(!bytes.empty(), "fixture is readable");
 
@@ -120,7 +120,7 @@ void test_fixture_runs_twice() {
 }
 
 void test_loader_reset_is_deterministic() {
-    const std::string path = std::string(KR216_FIXTURE_DIR) + "/hello.k216";
+    const std::string path = std::string(KR216_FIXTURE_DIR) + "/hello.kr216";
     const auto bytes = read_file(path);
     kr216::Image image;
     std::string error;

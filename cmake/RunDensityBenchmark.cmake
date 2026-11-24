@@ -40,14 +40,14 @@ foreach(source IN LISTS sources)
         COMMAND "${KRLD}" --gc-sections
                 "${WORK}/crt0.kro" "${WORK}/syscalls.kro" "${WORK}/eh.kro"
                 "${WORK}/libc.kro" "${WORK}/${name}.kro"
-                -o "${WORK}/${name}.k216"
+                -o "${WORK}/${name}.kr216"
         RESULT_VARIABLE link_result
         OUTPUT_VARIABLE link_output
         ERROR_VARIABLE link_error)
     if(NOT link_result EQUAL 0)
         message(FATAL_ERROR "krld failed for ${name}:\n${link_output}${link_error}")
     endif()
-    list(APPEND images "${WORK}/${name}.k216")
+    list(APPEND images "${WORK}/${name}.kr216")
 endforeach()
 
 execute_process(

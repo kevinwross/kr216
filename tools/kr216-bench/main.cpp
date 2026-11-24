@@ -110,7 +110,7 @@ int main(int argc, char** argv) {
     if (images.empty()) {
         std::fprintf(stderr,
                      "usage: kr216-bench [--max-density N] "
-                     "[--max-instructions N] <image.k216>...\n");
+                     "[--max-instructions N] <image.kr216>...\n");
         return 2;
     }
     std::uint32_t code_bytes = 0;

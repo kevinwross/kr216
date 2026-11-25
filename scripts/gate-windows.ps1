@@ -40,9 +40,13 @@ if (Test-Path $doctor) {
     if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 }
 
+# Both spellings are passed. This tree decides whether the guest tests exist from
+# KRC_EXECUTABLE/KRLD_EXECUTABLE, and the family convention is KRG_KRC/KRG_KRLD; a
+# gate that forwarded only the second silently registered 11 rows where 56 were
+# expected, which the row count caught.
 $arguments = @('--preset', $Preset)
-if ($Krc) { $arguments += "-DKRG_KRC=$Krc" }
-if ($Krld) { $arguments += "-DKRG_KRLD=$Krld" }
+if ($Krc) { $arguments += "-DKRG_KRC=$Krc"; $arguments += "-DKRC_EXECUTABLE=$Krc" }
+if ($Krld) { $arguments += "-DKRG_KRLD=$Krld"; $arguments += "-DKRLD_EXECUTABLE=$Krld" }
 
 cmake @arguments
 if ($LASTEXITCODE -ne 0) { throw "configure failed for $Preset" }

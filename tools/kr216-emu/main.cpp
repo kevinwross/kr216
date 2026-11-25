@@ -9,6 +9,8 @@
 #include <cstdlib>
 #include <cstring>
 #include <fstream>
+#include <iostream>
+#include <limits>
 #include <string>
 #include <vector>
 
@@ -19,10 +21,13 @@ namespace {
 
 void usage(const char* program) {
     std::fprintf(stderr,
-                 "usage: %s [--max-instructions N] [--input TEXT] [--dump-disassembly] image\n"
+                 "usage: %s [--max-instructions N] [--input TEXT] [--inputfile PATH] [--dump-disassembly] image\n"
                  "\n"
-                 "  --max-instructions N  stop after N instructions (default 10000000)\n"
+                 "  --max-instructions N  stop after N instructions (default 10000000; 0 = no limit)\n"
+                 "  --max-steps N         alias for --max-instructions\n"
                  "  --input TEXT          console input the guest can read with SYS read\n"
+                 "  --inputfile PATH      queue a file's console input, then read stdin\n"
+                 "  --console             run with stdin and stdout as the guest console\n"
                  "  --dump-disassembly    print the executable section's instructions first\n",
                  program);
 }
@@ -33,6 +38,8 @@ int main(int argc, char** argv) {
     std::size_t budget = 10'000'000;
     std::string input;
     bool dump = false;
+    bool console = false;
+    bool stdin_fallback = false;
     const char* image_path = nullptr;
 
     // The four debugging instruments described in debug-instruments.md. They are
@@ -50,10 +57,23 @@ int main(int argc, char** argv) {
 
     for (int index = 1; index < argc; ++index) {
         const std::string argument = argv[index];
-        if (argument == "--max-instructions" && index + 1 < argc) {
+        if ((argument == "--max-instructions" || argument == "--max-steps") &&
+            index + 1 < argc) {
             budget = static_cast<std::size_t>(std::strtoull(argv[++index], nullptr, 0));
         } else if (argument == "--input" && index + 1 < argc) {
             input = argv[++index];
+        } else if (argument == "--inputfile" && index + 1 < argc) {
+            const char* path = argv[++index];
+            std::ifstream input_file(path, std::ios::binary);
+            if (!input_file) {
+                std::fprintf(stderr, "kr216: cannot open %s\n", path);
+                return 2;
+            }
+            input.assign(std::istreambuf_iterator<char>(input_file),
+                         std::istreambuf_iterator<char>());
+            stdin_fallback = true;
+        } else if (argument == "--console") {
+            console = true;
         } else if (argument == "--dump-disassembly") {
             dump = true;
         } else if (argument == "--watch" && index + 1 < argc) {
@@ -109,6 +129,22 @@ int main(int argc, char** argv) {
         return 2;
     }
     machine.set_console_input(input);
+    if (console || stdin_fallback) {
+        // A line is read only when the guest has consumed everything queued, so
+        // execution blocks exactly where an interactive console would wait.
+        machine.set_console_input_refill([&machine] {
+            std::string line;
+            if (std::getline(std::cin, line)) {
+                machine.push_console_input(line + "\n");
+            }
+        });
+    }
+    if (console) {
+        machine.set_console_output_sink([](char byte) {
+            std::fputc(byte, stdout);
+            std::fflush(stdout);
+        });
+    }
 
     if (dump) {
         for (const kr216::ImageSection& section : image.sections) {
@@ -139,14 +175,20 @@ int main(int argc, char** argv) {
     // With an instrument asked for, the single run() call becomes a step loop:
     // each instrument has to sample before and after one instruction, which run()
     // does not offer.
+    // Zero is the family's "no limit" spelling. The core's run() takes a hard
+    // count, so an unlimited run gets the largest representable budget; no
+    // practical run reaches it, and every instrumented loop uses the same value.
+    const bool unlimited = budget == 0;
+    const std::size_t run_budget =
+        unlimited ? std::numeric_limits<std::size_t>::max() : budget;
     kr216::StopReason reason = kr216::StopReason::Running;
     bool stopped_at_break = false;
     if (!watch && !breakpoint && !page && !frame_pointer) {
-        reason = machine.run(budget);
+        reason = machine.run(run_budget);
     } else {
         std::vector<std::uint8_t> page_before;
         std::size_t done = 0;
-        while (done < budget) {
+        while (done < run_budget) {
             const std::uint16_t pc = machine.state().r[14];
             if (breakpoint && pc == break_address) {
                 std::printf("break at 0x%04X: ", static_cast<unsigned>(pc));
@@ -211,7 +253,9 @@ int main(int argc, char** argv) {
             }
         }
     }
-    std::fwrite(machine.console_output().data(), 1, machine.console_output().size(), stdout);
+    if (!console) {
+        std::fwrite(machine.console_output().data(), 1, machine.console_output().size(), stdout);
+    }
 
     switch (reason) {
     case kr216::StopReason::Exited:
@@ -224,7 +268,9 @@ int main(int argc, char** argv) {
                      static_cast<unsigned long long>(machine.state().retired));
         return 0;
     case kr216::StopReason::Running:
-        std::fprintf(stderr, "kr216: instruction budget exhausted (%zu)\n", budget);
+        if (!unlimited) {
+            std::fprintf(stderr, "kr216: instruction budget exhausted (%zu)\n", budget);
+        }
         return 3;
     case kr216::StopReason::Faulted:
         std::fprintf(stderr, "kr216: faulted with no room for a trap frame\n");

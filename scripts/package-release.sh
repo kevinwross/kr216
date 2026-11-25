@@ -10,7 +10,7 @@ mkdir -p "$out/bin" "$out/runtime" "$out/examples"
 
 host="$compiler/build/$preset/host/bin/Debug"
 cp "$host/krc" "$host/krld" "$out/bin/"
-cp "$root/build/$preset/tools/kr216-emu/kr216-emu" "$out/bin/"
+cp "$root/build/$preset/tools/kr216-emu/kr216" "$out/bin/"
 cp "$root/build/$preset/tools/kr216-dis/kr216-dis" "$out/bin/"
 cp "$root/build/$preset/tools/kr216-bench/kr216-bench" "$out/bin/"
 

@@ -13,14 +13,14 @@ mkdir -p "$work"
 if [ -x "$root/bin/krc" ]; then
     krc="$root/bin/krc"
     krld="$root/bin/krld"
-    emu="$root/bin/kr216-emu"
+    emu="$root/bin/kr216"
     runtime="$root/runtime"
     sysroot="$root/sysroot"
 else
     compiler=${KRCOMPILER:-"$root/../krcompiler"}
     krc="$compiler/build/linux-gcc-debug/host/bin/Debug/krc"
     krld="$compiler/build/linux-gcc-debug/host/bin/Debug/krld"
-    emu="$root/build/linux-gcc-debug/tools/kr216-emu/kr216-emu"
+    emu="$root/build/linux-gcc-debug/tools/kr216-emu/kr216"
     runtime="$compiler/targets/kr216/runtime"
     sysroot="$compiler/build/linux-gcc-debug/stage/sysroot"
 fi

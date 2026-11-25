@@ -6,7 +6,7 @@
 | Date | 2026-11-22T00:25:00-08:00 |
 | Approval | §15's sixteen decisions approved by the owner, 2026-11-21; changing one is an ISA change under the plan's change policy |
 | Authority | `kr216-plan.md` v0.11 (D1–D34) fixes the shape; this document fixes the exact encodings and semantics the plan delegates to it |
-| Applies to | `kr216-emu`, `kr216-dis`, the krcompiler assembler/encoder, and the kr216 image loader |
+| Applies to | `kr216`, `kr216-dis`, the krcompiler assembler/encoder, and the kr216 image loader |
 | Open items | section 15 lists every decision this document records that the plan leaves to it, and section 16 what is deferred |
 
 The key words MUST, MUST NOT, SHOULD and MAY are used as in RFC 2119.

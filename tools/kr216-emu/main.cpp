@@ -1,4 +1,4 @@
-// kr216-emu: load a K216 image, run it, and report why it stopped.
+// kr216: load a K216 image, run it, and report why it stopped.
 //
 // The console's output goes to stdout and the diagnostics to stderr, so a guest program's
 // bytes survive redirection. The exit status follows the guest's `exit` call, which is what a
@@ -86,26 +86,26 @@ int main(int argc, char** argv) {
 
     std::ifstream stream(image_path, std::ios::binary);
     if (!stream) {
-        std::fprintf(stderr, "kr216-emu: cannot open %s\n", image_path);
+        std::fprintf(stderr, "kr216: cannot open %s\n", image_path);
         return 2;
     }
     const std::vector<std::uint8_t> bytes((std::istreambuf_iterator<char>(stream)),
                                           std::istreambuf_iterator<char>());
     if (!stream.eof() && stream.fail()) {
-        std::fprintf(stderr, "kr216-emu: cannot read %s\n", image_path);
+        std::fprintf(stderr, "kr216: cannot read %s\n", image_path);
         return 2;
     }
 
     kr216::Image image;
     std::string error;
     if (!kr216::Image::parse(bytes.data(), bytes.size(), image, error)) {
-        std::fprintf(stderr, "kr216-emu: %s\n", error.c_str());
+        std::fprintf(stderr, "kr216: %s\n", error.c_str());
         return 2;
     }
 
     kr216::Machine machine;
     if (!kr216::load(image, bytes.data(), machine, error)) {
-        std::fprintf(stderr, "kr216-emu: %s\n", error.c_str());
+        std::fprintf(stderr, "kr216: %s\n", error.c_str());
         return 2;
     }
     machine.set_console_input(input);
@@ -220,14 +220,14 @@ int main(int argc, char** argv) {
         if (stopped_at_break) {
             return 0;
         }
-        std::fprintf(stderr, "kr216-emu: halted after %llu instructions\n",
+        std::fprintf(stderr, "kr216: halted after %llu instructions\n",
                      static_cast<unsigned long long>(machine.state().retired));
         return 0;
     case kr216::StopReason::Running:
-        std::fprintf(stderr, "kr216-emu: instruction budget exhausted (%zu)\n", budget);
+        std::fprintf(stderr, "kr216: instruction budget exhausted (%zu)\n", budget);
         return 3;
     case kr216::StopReason::Faulted:
-        std::fprintf(stderr, "kr216-emu: faulted with no room for a trap frame\n");
+        std::fprintf(stderr, "kr216: faulted with no room for a trap frame\n");
         return 4;
     }
     return 4;

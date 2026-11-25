@@ -12,7 +12,7 @@ $hostBin = Join-Path $compiler "build\$preset\host\bin\Debug"
 foreach ($tool in 'krc.exe', 'krld.exe') {
     Copy-Item (Join-Path $hostBin $tool) (Join-Path $out "bin\$tool")
 }
-Copy-Item (Join-Path $root "build\$preset\tools\kr216-emu\Debug\kr216-emu.exe") (Join-Path $out 'bin\kr216-emu.exe')
+Copy-Item (Join-Path $root "build\$preset\tools\kr216-emu\Debug\kr216.exe") (Join-Path $out 'bin\kr216.exe')
 Copy-Item (Join-Path $root "build\$preset\tools\kr216-dis\Debug\kr216-dis.exe") (Join-Path $out 'bin\kr216-dis.exe')
 Copy-Item (Join-Path $root "build\$preset\tools\kr216-bench\Debug\kr216-bench.exe") (Join-Path $out 'bin\kr216-bench.exe')
 

@@ -28,7 +28,7 @@ struct CpuState {
 };
 
 // The reference machine. It owns the 64 KiB memory, the registers, the trap machinery, the
-// console and the timer; it is the VM behind `kr216-emu` and the debugger interface.
+// console and the timer; it is the VM behind `kr216` and the debugger interface.
 class Machine {
 public:
     static constexpr std::size_t kMemorySize = 0x10000;

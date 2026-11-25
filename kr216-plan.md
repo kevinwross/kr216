@@ -110,7 +110,7 @@ the first thing to confirm.
 ```
                         host process
    +-------------------------------------------------------+
-   |  kr216-emu                                            |
+   |  kr216                                            |
    |   +-----------+   +-----------+   +----------------+  |
    |   |  decoder  |-->|  execute  |-->| memory + MMIO  |  |
    |   +-----------+   +-----------+   +----------------+  |
@@ -1033,7 +1033,7 @@ krdbg today, so kr216 loads images.
 | kr216 profile + descriptor | Data model, capabilities, register roles, calling convention | krcompiler (`src/target/`, `src/backend/`) | M3 |
 | kr216 assembler + encoder + KRO writer | Syntax, encoding tables, relocations, object emission | krcompiler (`src/asm/`) | M3 |
 | kr216 backend | Selection, frames, assembly text, debug information | krcompiler (`src/backend/`) | M3–M4 |
-| `kr216-emu` | Interpreter, FPU, MMIO devices, machine-level debug interface, the kr216 VM | this repo | M1 |
+| `kr216` | Interpreter, FPU, MMIO devices, machine-level debug interface, the kr216 VM | this repo | M1 |
 | `kr216-dis` | Disassembler (shared tables with the emulator) | this repo | M1 |
 | `targets/kr216/runtime/` | `crt0`, `libc`, exception runtime, host-call stubs | krcompiler | M4 |
 | `sysroot/kr216/include/` | Generated `bits/*` headers | krcompiler | M3 |

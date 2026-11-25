@@ -104,7 +104,7 @@ krc -c --target=kr216 runtime/eh.s -o eh.kro
 krc -c --target=kr216 runtime/libc.c -o libc.kro
 krc -c --target=kr216 hello.cpp -o hello.kro
 krld --gc-sections crt0.kro syscalls.kro eh.kro libc.kro hello.kro -o hello.kr216
-kr216-emu hello.kr216
+kr216 hello.kr216
 ```
 
 Each example prints its result and returns 42 from `main`. `kr216-bench` reports the guest exit
@@ -130,7 +130,7 @@ krdbg --kr216 examples/build/example.kr216
 | `tests/` | CTest harness, encoder/semantics/frame/FP/fuzz suites and guest-program gates |
 | `examples/` | small C++ programs and the build scripts above |
 | `benchmarks/` | the fixed density corpus (string copy, printf, container, recursion, FP loop) |
-| `tools/` | `kr216-emu`, `kr216-dis` and `kr216-bench` |
+| `tools/` | `kr216`, `kr216-dis` and `kr216-bench` |
 | `cmake/` | guest build and density-benchmark drivers |
 
 `kr216-isa.md` is the encoding and semantics reference; `docs/abi-kr216.md` in krcompiler is the

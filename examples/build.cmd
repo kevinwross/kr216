@@ -14,14 +14,14 @@ if not exist "%WORK%" mkdir "%WORK%"
 if exist "%ROOT%\bin\krc.exe" (
     set "KRC=%ROOT%\bin\krc.exe"
     set "KRLD=%ROOT%\bin\krld.exe"
-    set "EMU=%ROOT%\bin\kr216-emu.exe"
+    set "EMU=%ROOT%\bin\kr216.exe"
     set "RUNTIME=%ROOT%\runtime"
     set "SYSROOT=%ROOT%\sysroot"
 ) else (
     if not defined KRCOMPILER set "KRCOMPILER=%ROOT%\..\krcompiler"
     set "KRC=!KRCOMPILER!\build\windows-msvc-debug\host\bin\Debug\krc.exe"
     set "KRLD=!KRCOMPILER!\build\windows-msvc-debug\host\bin\Debug\krld.exe"
-    set "EMU=%ROOT%\build\windows-msvc-debug\tools\kr216-emu\Debug\kr216-emu.exe"
+    set "EMU=%ROOT%\build\windows-msvc-debug\tools\kr216-emu\Debug\kr216.exe"
     set "RUNTIME=!KRCOMPILER!\targets\kr216\runtime"
     set "SYSROOT=!KRCOMPILER!\build\windows-msvc-debug\stage\sysroot"
 )

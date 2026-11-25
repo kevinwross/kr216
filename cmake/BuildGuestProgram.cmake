@@ -1,7 +1,7 @@
 # Builds one compiler-generated kr216 C or assembly program and runs it.
 #
 # Required: KRC, KRLD, EMU, SOURCE_ROOT, SOURCE, WORK, EXPECT_EXIT
-# Optional: EXTRA_SOURCE, EXPECT_OUTPUT, NO_CRT0
+# Optional: EXTRA_SOURCE, EXPECT_OUTPUT, NO_CRT0, MAX_INSTRUCTIONS
 
 if(NOT DEFINED KRC OR NOT DEFINED KRLD OR NOT DEFINED EMU OR NOT DEFINED SOURCE_ROOT OR
    NOT DEFINED SOURCE OR NOT DEFINED WORK OR NOT DEFINED EXPECT_EXIT)
@@ -54,8 +54,11 @@ if(NOT link_result EQUAL 0)
     message(FATAL_ERROR "krld failed (${link_result}):\n${link_output}${link_error}")
 endif()
 
+if(NOT DEFINED MAX_INSTRUCTIONS OR MAX_INSTRUCTIONS STREQUAL "")
+    set(MAX_INSTRUCTIONS 1000000)
+endif()
 execute_process(
-    COMMAND "${EMU}" --max-instructions 1000000 "${image}"
+    COMMAND "${EMU}" --max-instructions ${MAX_INSTRUCTIONS} "${image}"
     OUTPUT_VARIABLE output
     ERROR_VARIABLE error
     RESULT_VARIABLE result)

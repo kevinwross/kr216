@@ -65,6 +65,24 @@ if(KR216_BUILD_GUEST_TESTS)
 
     add_guest_program_test(guest_hello
         "${CMAKE_SOURCE_DIR}/src216/hello.c" 0 "Hello, KR216!")
+    add_test(NAME guest_hello_unlimited
+        COMMAND ${CMAKE_COMMAND}
+                "-DKRC=${KRG_KRC}"
+                "-DKRLD=${KRG_KRLD}"
+                "-DEMU=$<TARGET_FILE:kr216_emu>"
+                "-DSOURCE_ROOT=${CMAKE_SOURCE_DIR}"
+                "-DSOURCE=${CMAKE_SOURCE_DIR}/src216/hello.c"
+                "-DWORK=${CMAKE_CURRENT_BINARY_DIR}/guest_hello_unlimited"
+                "-DEXPECT_EXIT=0"
+                "-DEXPECT_OUTPUT=Hello, KR216!"
+                "-DMAX_INSTRUCTIONS=0"
+                -P ${CMAKE_SOURCE_DIR}/cmake/BuildGuestProgram.cmake)
+    add_test(NAME guest_hello_max_steps_alias
+        COMMAND $<TARGET_FILE:kr216_emu> --max-steps 0
+                "${CMAKE_CURRENT_BINARY_DIR}/guest_hello_unlimited/program.kr216")
+    set_tests_properties(guest_hello_max_steps_alias PROPERTIES
+        DEPENDS guest_hello_unlimited
+        PASS_REGULAR_EXPRESSION "Hello, KR216!")
     add_guest_program_test(guest_abi
         "${CMAKE_SOURCE_DIR}/src216/abi.c" 42 "abi ok")
     add_guest_program_test(guest_long_literal

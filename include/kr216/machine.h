@@ -2,6 +2,7 @@
 
 #include <cstddef>
 #include <cstdint>
+#include <functional>
 #include <string>
 
 #include "kr216/encoding.h"
@@ -70,6 +71,14 @@ public:
     // Console and host services. The console is the three-register device of ISA section 14;
     // `write` and `read` reach the same input and output.
     void set_console_input(std::string input);
+    // Appends without disturbing what the guest has not read yet.
+    void push_console_input(std::string text);
+    // Called when the guest reads console input and nothing is queued. The
+    // callback may queue a line; it must not re-enter the machine.
+    void set_console_input_refill(std::function<void()> refill);
+    // Called for every console byte the guest writes, before it reaches the
+    // accumulated buffer. An interactive console writes it through to stdout.
+    void set_console_output_sink(std::function<void(char)> sink);
     [[nodiscard]] const std::string& console_output() const noexcept { return console_output_; }
     [[nodiscard]] const std::string& debug_output() const noexcept { return debug_output_; }
     void set_time(std::uint32_t seconds) noexcept { time_ = seconds; }
@@ -119,6 +128,7 @@ private:
     bool push_mask(std::uint16_t mask);
     bool pop_mask(std::uint16_t mask);
     bool do_sys();
+    void console_put(char byte);
 
     // FPU helpers over the binary64 bit patterns.
     static double to_double(std::uint64_t bits) noexcept;
@@ -137,6 +147,8 @@ private:
     std::string console_input_;
     std::size_t console_input_pos_ = 0;
     std::string console_output_;
+    std::function<void()> console_refill_;
+    std::function<void(char)> console_sink_;
     std::string debug_output_;
     std::uint32_t time_ = 0;
     std::uint16_t timer_counter_ = 0;

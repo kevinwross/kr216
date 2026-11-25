@@ -82,6 +82,25 @@ void Machine::set_console_input(std::string input) {
     console_input_pos_ = 0;
 }
 
+void Machine::push_console_input(std::string text) {
+    console_input_ += std::move(text);
+}
+
+void Machine::set_console_input_refill(std::function<void()> refill) {
+    console_refill_ = std::move(refill);
+}
+
+void Machine::set_console_output_sink(std::function<void(char)> sink) {
+    console_sink_ = std::move(sink);
+}
+
+void Machine::console_put(char byte) {
+    console_output_.push_back(byte);
+    if (console_sink_) {
+        console_sink_(byte);
+    }
+}
+
 // ---- checked memory access ---------------------------------------------------------
 
 bool Machine::fault_address() {
@@ -158,6 +177,9 @@ bool Machine::read_io16(std::uint16_t address, std::uint16_t& out) {
         out = 0;
         return true;
     case kConsoleIn:
+        if (console_input_pos_ >= console_input_.size() && console_refill_) {
+            console_refill_();
+        }
         out = 0;
         if (console_input_pos_ < console_input_.size()) {
             out = static_cast<std::uint8_t>(console_input_[console_input_pos_]);
@@ -186,7 +208,7 @@ bool Machine::read_io16(std::uint16_t address, std::uint16_t& out) {
 bool Machine::write_io16(std::uint16_t address, std::uint16_t value) {
     switch (address) {
     case kConsoleOut:
-        console_output_.push_back(static_cast<char>(value & 0xFF));
+        console_put(static_cast<char>(value & 0xFF));
         return true;
     case kConsoleIn:
     case kConsoleStatus:
@@ -454,7 +476,7 @@ bool Machine::do_sys() {
         for (; written < length; ++written) {
             std::uint8_t byte = 0;
             if (!read8(static_cast<std::uint16_t>(address + written), byte)) return false;
-            console_output_.push_back(static_cast<char>(byte));
+            console_put(static_cast<char>(byte));
         }
         reg_write(2, written);
         return true;
@@ -462,6 +484,9 @@ bool Machine::do_sys() {
     case 2: {  // read(fd, address, length)
         const std::uint16_t address = reg_read(3);
         const std::uint16_t length = reg_read(4);
+        if (console_input_pos_ >= console_input_.size() && console_refill_) {
+            console_refill_();
+        }
         std::uint16_t got = 0;
         while (got < length && console_input_pos_ < console_input_.size()) {
             const auto byte = static_cast<std::uint8_t>(console_input_[console_input_pos_]);

@@ -151,9 +151,6 @@
       "configurePreset": "linux-arm64-release",
       "output": {
         "outputOnFailure": true
-      },
-      "execution": {
-        "jobs": 4
       }
     }
   ]

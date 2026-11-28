@@ -44,7 +44,7 @@ add_test(NAME traps COMMAND traps_test)
 
 
 if(KR216_BUILD_GUEST_TESTS)
-    function(add_guest_program_test name source expect_exit expect_output)
+    function(add_guest_program_test name source expect_exit expect_display)
         add_test(NAME ${name}
             COMMAND ${CMAKE_COMMAND}
                     "-DKRC=${KRG_KRC}"
@@ -54,7 +54,7 @@ if(KR216_BUILD_GUEST_TESTS)
                     "-DSOURCE=${source}"
                     "-DWORK=${CMAKE_CURRENT_BINARY_DIR}/${name}"
                     "-DEXPECT_EXIT=${expect_exit}"
-                    "-DEXPECT_OUTPUT=${expect_output}"
+                    "-DEXPECT_DISPLAY=${expect_display}"
                     -P ${CMAKE_SOURCE_DIR}/cmake/BuildGuestProgram.cmake)
     endfunction()
 
@@ -78,11 +78,11 @@ if(KR216_BUILD_GUEST_TESTS)
                 "-DSOURCE=${CMAKE_SOURCE_DIR}/src216/hello.c"
                 "-DWORK=${CMAKE_CURRENT_BINARY_DIR}/guest_hello_unlimited"
                 "-DEXPECT_EXIT=0"
-                "-DEXPECT_OUTPUT=Hello, KR216!"
+                "-DEXPECT_DISPLAY=Hello, KR216!"
                 "-DMAX_INSTRUCTIONS=0"
                 -P ${CMAKE_SOURCE_DIR}/cmake/BuildGuestProgram.cmake)
     add_test(NAME guest_hello_max_steps_alias
-        COMMAND $<TARGET_FILE:kr216_emu> --max-steps 0
+        COMMAND $<TARGET_FILE:kr216_emu> --display-dump --max-steps 0
                 "${CMAKE_CURRENT_BINARY_DIR}/guest_hello_unlimited/program.kr216")
     set_tests_properties(guest_hello_max_steps_alias PROPERTIES
         DEPENDS guest_hello_unlimited
@@ -174,10 +174,42 @@ if(KR216_BUILD_GUEST_TESTS)
                 "-DEMU=$<TARGET_FILE:kr216_emu>"
                 "-DSOURCE_ROOT=${CMAKE_SOURCE_DIR}"
                 "-DSOURCE=${CMAKE_SOURCE_DIR}/src216/display.c"
-                "-DEXTRA_SOURCE=${CMAKE_SOURCE_DIR}/../krcompiler/targets/kr216/runtime/display.c"
                 "-DWORK=${CMAKE_CURRENT_BINARY_DIR}/guest_display"
                 "-DEXPECT_EXIT=42"
-                "-DEXPECT_OUTPUT=display ok"
+                "-DEXPECT_DISPLAY=display ok"
+                -P ${CMAKE_SOURCE_DIR}/cmake/BuildGuestProgram.cmake)
+    # stdio end to end: printf writes the screen, getchar/getc read the display line editor,
+    # the guest observes EOF when the host closes the input script, and the console keeps only
+    # the explicit debug-serial write.
+    add_test(NAME guest_stdio
+        COMMAND ${CMAKE_COMMAND}
+                "-DKRC=${KRG_KRC}"
+                "-DKRLD=${KRG_KRLD}"
+                "-DEMU=$<TARGET_FILE:kr216_emu>"
+                "-DSOURCE_ROOT=${CMAKE_SOURCE_DIR}"
+                "-DSOURCE=${CMAKE_SOURCE_DIR}/src216/stdio.c"
+                "-DWORK=${CMAKE_CURRENT_BINARY_DIR}/guest_stdio"
+                "-DEXPECT_EXIT=42"
+                "-DDISPLAY_INPUT=ada|b|z|"
+                "-DEXPECT_DISPLAY=name? ada;hello ada;rand 16838;second? b;got b (1);extra z;tail: eof;bye;putchar ok"
+                "-DEXPECT_OUTPUT=debug serial ok"
+                "-DEXPECT_CONSOLE_ABSENT=hello"
+                -P ${CMAKE_SOURCE_DIR}/cmake/BuildGuestProgram.cmake)
+    # The KRCompiler tictactoe example, linked with the kr216 runtime and no getchar/rand shim.
+    # Four moves finish the round (the computer wins) and the closing 'Play again?' read gets
+    # EOF from the exhausted display input, so the program exits 0.
+    add_test(NAME guest_tictactoe
+        COMMAND ${CMAKE_COMMAND}
+                "-DKRC=${KRG_KRC}"
+                "-DKRLD=${KRG_KRLD}"
+                "-DEMU=$<TARGET_FILE:kr216_emu>"
+                "-DSOURCE_ROOT=${CMAKE_SOURCE_DIR}"
+                "-DSOURCE=${CMAKE_SOURCE_DIR}/../krcompiler/examples/tictactoe.cpp"
+                "-DWORK=${CMAKE_CURRENT_BINARY_DIR}/guest_tictactoe"
+                "-DEXPECT_EXIT=0"
+                "-DDISPLAY_INPUT=1|9|7|2|"
+                "-DEXPECT_DISPLAY=The computer wins.;Input ended.;Thanks for playing."
+                "-DMAX_INSTRUCTIONS=5000000"
                 -P ${CMAKE_SOURCE_DIR}/cmake/BuildGuestProgram.cmake)
     add_test(NAME guest_init_array
         COMMAND ${CMAKE_COMMAND}
@@ -199,7 +231,7 @@ if(KR216_BUILD_GUEST_TESTS)
                 "-DSOURCE=${CMAKE_SOURCE_DIR}/src216/hello.c"
                 "-DWORK=${CMAKE_CURRENT_BINARY_DIR}/guest_kdbg"
                 "-DEXPECT_EXIT=0"
-                "-DEXPECT_OUTPUT=Hello, KR216!"
+                "-DEXPECT_DISPLAY=Hello, KR216!"
                 "-DCHECK_SYMBOLS=ON"
                 -P ${CMAKE_SOURCE_DIR}/cmake/BuildGuestProgram.cmake)
     add_test(NAME guest_abi_callee_saved

@@ -21,13 +21,18 @@ namespace {
 
 void usage(const char* program) {
     std::fprintf(stderr,
-                 "usage: %s [--max-instructions N] [--input TEXT] [--inputfile PATH] [--dump-disassembly] image\n"
+                 "usage: %s [--max-instructions N] [--input TEXT] [--inputfile PATH] [--dump-disassembly]\n"
+                 "          [--display-input TEXT] [--display-dump] image\n"
                  "\n"
                  "  --max-instructions N  stop after N instructions (default 10000000; 0 = no limit)\n"
                  "  --max-steps N         alias for --max-instructions\n"
-                 "  --input TEXT          console input the guest can read with SYS read\n"
+                 "  --input TEXT          console input the guest can read with SYS read (debug serial)\n"
                  "  --inputfile PATH      queue a file's console input, then read stdin\n"
                  "  --console             run with stdin and stdout as the guest console\n"
+                 "  --display-input TEXT  scripted text for the display line editor (stdin); the input\n"
+                 "                        source closes when the text is exhausted, so the guest sees EOF\n"
+                 "  --display-inputfile PATH  read that display input from a file instead\n"
+                 "  --display-dump        print the console bytes and the display screen after the run\n"
                  "  --dump-disassembly    print the executable section's instructions first\n",
                  program);
 }
@@ -40,6 +45,9 @@ int main(int argc, char** argv) {
     bool dump = false;
     bool console = false;
     bool stdin_fallback = false;
+    bool display_dump = false;
+    bool display_input_given = false;
+    std::string display_input;
     const char* image_path = nullptr;
 
     // The four debugging instruments described in debug-instruments.md. They are
@@ -74,6 +82,21 @@ int main(int argc, char** argv) {
             stdin_fallback = true;
         } else if (argument == "--console") {
             console = true;
+        } else if (argument == "--display-input" && index + 1 < argc) {
+            display_input = argv[++index];
+            display_input_given = true;
+        } else if (argument == "--display-inputfile" && index + 1 < argc) {
+            const char* path = argv[++index];
+            std::ifstream display_file(path, std::ios::binary);
+            if (!display_file) {
+                std::fprintf(stderr, "kr216: cannot open %s\n", path);
+                return 2;
+            }
+            display_input.assign(std::istreambuf_iterator<char>(display_file),
+                                 std::istreambuf_iterator<char>());
+            display_input_given = true;
+        } else if (argument == "--display-dump") {
+            display_dump = true;
         } else if (argument == "--dump-disassembly") {
             dump = true;
         } else if (argument == "--watch" && index + 1 < argc) {
@@ -143,6 +166,33 @@ int main(int argc, char** argv) {
         machine.set_console_output_sink([](char byte) {
             std::fputc(byte, stdout);
             std::fflush(stdout);
+        });
+    }
+    if (display_input_given) {
+        // The display line editor is the guest's stdin. Feed it one line at a time once a poll
+        // has armed it, and close the source when the script is exhausted so the guest observes
+        // DISPLAY_END_OF_INPUT and a getchar loop terminates. A last line without a newline is
+        // delivered as the final line at the close.
+        std::size_t position = 0;
+        machine.set_display_input_refill([&machine, &display_input, &position] {
+            if (machine.display().line_ready()) {
+                return;
+            }
+            if (position < display_input.size()) {
+                if (!machine.display().editor_active()) {
+                    return;  // the poll that arms the editor has not run yet
+                }
+                std::size_t end = display_input.find('\n', position);
+                if (end == std::string::npos) {
+                    end = display_input.size();
+                } else {
+                    ++end;
+                }
+                machine.display().push_text(display_input.substr(position, end - position));
+                position = end;
+                return;
+            }
+            machine.display().close_input();
         });
     }
 
@@ -253,7 +303,40 @@ int main(int argc, char** argv) {
             }
         }
     }
-    if (!console) {
+    if (display_dump) {
+        // Two named sections so a test can tell the debug serial console from stdio's display.
+        // The screen is rendered as text rows: every cell code is one character, blanks are
+        // spaces, and trailing blanks are trimmed.
+        std::printf("console:\n");
+        std::fwrite(machine.console_output().data(), 1, machine.console_output().size(), stdout);
+        std::printf("\ndisplay:\n");
+        const krc::display::TextDisplay& display = machine.display();
+        std::uint16_t last_row = 0;
+        bool any = false;
+        for (std::uint16_t row = 0; row < display.rows(); ++row) {
+            for (std::uint16_t col = 0; col < display.cols(); ++col) {
+                if (display.cell(row, col).code != 0) {
+                    last_row = row;
+                    any = true;
+                }
+            }
+        }
+        if (any) {
+            for (std::uint16_t row = 0; row <= last_row; ++row) {
+                std::string line;
+                for (std::uint16_t col = 0; col < display.cols(); ++col) {
+                    const std::uint16_t code = display.cell(row, col).code;
+                    line.push_back(code >= 0x20 && code < 0x7F
+                                       ? static_cast<char>(code)
+                                       : ' ');
+                }
+                while (!line.empty() && line.back() == ' ') {
+                    line.pop_back();
+                }
+                std::printf("%s\n", line.c_str());
+            }
+        }
+    } else if (!console) {
         std::fwrite(machine.console_output().data(), 1, machine.console_output().size(), stdout);
     }
 

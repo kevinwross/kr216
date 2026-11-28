@@ -2,9 +2,9 @@
 
 | | |
 |---|---|
-| Status | **Proposed extension, version 1** — this is the kr216 binding of the common display ABI. The host device is KRCompiler's `krc::display` package and the guest side is the common `<krc/display.h>` API with the kr216 runtime; `kr216` contributes only the SYS 5 front end. It claims an ISA 1.x reserved SYS number; freezing it takes the ISA revision described in §6 |
-| Date | 2026-11-27T21:10:00-08:00 |
-| Authority | `kr216-isa.md` §13 fixes the SYS register roles and §15.13 reserves calls 5 and above; `kr216-plan.md` §14 fixes the device model; `..\krcompiler\docs\display-abi.md` fixes the common command set and canonical block |
+| Status | **Proposed extension, version 2** — this is the kr216 binding of the common display ABI (version 2). The host device is KRCompiler's `krc::display` package and the guest side is the common `<krc/display.h>` API with the kr216 runtime; `kr216` contributes only the SYS 5 front end. It claims an ISA 1.x reserved SYS number; freezing it takes the ISA revision described in §6 |
+| Date | 2026-11-27T22:05:00-08:00 |
+| Authority | `kr216-isa.md` §13 fixes the SYS register roles and §15.13 reserves calls 5 and above; `kr216-plan.md` §14 fixes the device model; `..\krcompiler\docs\display-abi.md` fixes the common command set, canonical block and statuses |
 | Applies to | `kr216`'s `Machine` SYS 5 front end and guest tests, KRCompiler's `krc::display` package and kr216 runtime, and the krdbg kr216 adapter's DISPLAY surface |
 | Open items | §6 (adoption into the frozen ISA) and §10 (UTF-8 cell codes) |
 
@@ -13,6 +13,11 @@ The key words MUST, MUST NOT, SHOULD and MAY are used as in RFC 2119.
 The host owns the text screen. The guest has no screen memory, no framebuffer and no
 cell-readback command: it writes through the SYS 5 hypercall and the host renders the cells.
 The device is an output-and-polled-input terminal, not a graphics adapter.
+
+The display is the program's **stdin and stdout**: the C runtime's `putchar`, `puts`, `printf`,
+`getchar` and `getc` use it (§8). The console device (`0xFF00`/`0xFF02`/`0xFF04`, SYS 1/SYS 2)
+is the **debug serial port**, not stdio: a program reaches it only by calling `__krc_write` /
+`__krc_debug_write` (§7). In the debugger that split is the DISPLAY tab and the COM tab.
 
 ## 1. Scope
 
@@ -38,12 +43,12 @@ leaves out:
 | Default foreground | `0xFF_FFFFFF` | White |
 | Default background | `0xFF_000000` | Black |
 | Cursor | row, column, visible | Visible at (0, 0) after reset |
-| Reset | clear, home, show, defaults | `TextDisplay::reset()`; `Machine::reset()` calls it |
+| Reset | clear, home, show, defaults | `TextDisplay::reset()`; `Machine::reset()` calls it and reopens a closed input source |
 
 `TextDisplay::clear()` paints every cell with the *current* colours and code 0 and leaves the
 cursor alone. It is the CLEAR command. `reset()` is the device reset: it restores the
 construction colours and geometry, homes and shows the cursor, clears the screen, and drops
-the key queue, click queue, line editor and any completed line.
+the key queue, click queue, line editor, any completed line and the input-closed state.
 
 The screen scrolls one row when a write advances past the last row: rows 1..N-1 move up,
 the bottom row is filled with code 0 in the current colours, and the cursor stays on the
@@ -71,6 +76,7 @@ shorter or longer block with `-1`. Commands without a block ignore R3 and R4.
 | `DISPLAY_BAD_ARGUMENT` | -1 | bad block, bad pointer, bad length or bad argument value |
 | `DISPLAY_NOT_READY` | -2 | no key or click is queued, or a line is still being edited |
 | `DISPLAY_UNKNOWN_COMMAND` | -3 | the host does not know the command number |
+| `DISPLAY_END_OF_INPUT` | -4 | `READ_LINE`/`GET_KEY` only: the host closed its input source |
 
 All values in an argument block are 16-bit little-endian words: word *n* is at
 `block + 2n`, low byte first. A 32-bit colour is two words, low word first. A guest pointer
@@ -99,8 +105,8 @@ accessors: a display call MUST NOT consume console input or fault.
 | 4 | `PUT_CHAR` | in: 2 bytes | 2 | 0 |
 | 5 | `PUT_STRING` | in: 4 bytes | 4 | 0 |
 | 6 | `CURSOR` | in: 6 bytes | 6 | 0, or `-1` |
-| 7 | `READ_LINE` | in: 4 bytes | 4 | length ≥ 0, `-2` not ready, or `-1` |
-| 8 | `GET_KEY` | ignored | ignored | key code, or `-2` |
+| 7 | `READ_LINE` | in: 4 bytes | 4 | length ≥ 0, `-2` not ready, `-4` input closed, or `-1` |
+| 8 | `GET_KEY` | ignored | ignored | key code, `-2`, or `-4` |
 | 9 | `GET_CLICK` | out: 6 bytes | 6 | 0 and block written, or `-2` |
 
 Any other command number returns `-3`.
@@ -193,6 +199,9 @@ The call is polled:
    line stays pending, so a caller that shrinks its buffer can retry.
 5. A capacity of 0, or a buffer range that fails §3.1, returns `-1` without arming or
    consuming anything.
+6. If the host has closed its input source (never to reopen before a reset) and no line is
+   complete, the call returns `-4`. A non-empty draft that was being edited when the source
+   closed is completed first, so the guest receives it before the `-4`.
 
 The editor caps the line at `capacity - 1` bytes so the C wrapper can NUL-terminate it, and
 at the remaining columns of its starting row. The guest only ever receives a completed line;
@@ -200,9 +209,10 @@ guest code does not echo.
 
 ### 4.8 `GET_KEY` (8)
 
-Returns the oldest queued key code, or `-2` when the queue is empty. Key codes are
-`0x0000–0x7FFE`; `-2` (0xFFFE in R2) is the only negative answer, so a code that would be
-negative on return is not representable.
+Returns the oldest queued key code, or `-2` when the queue is empty and the input source is
+open, or `-4` when the queue is empty and the host has closed it. Key codes are
+`0x0000–0x7FFE`; the negative answers are `-2` (0xFFFE in R2) and `-4` (0xFFFC), so a code
+that would be negative on return is not representable.
 
 | Key | Code |
 |---|---:|
@@ -227,7 +237,8 @@ listed here MAY be added without an ABI change as long as they stay in `0x0000�
 
 Returns `0` with the block written when a click is queued, or `-2` with the block untouched.
 Rows and columns are cell coordinates; the host is trusted to queue coordinates inside the
-screen. Buttons are a mask: left = 1, right = 2, middle = 4. There is no wheel event in v1.
+screen. Buttons are a mask: left = 1, right = 2, middle = 4. There is no wheel event in
+version 2.
 
 ## 5. Host line editor
 
@@ -249,6 +260,24 @@ consumes every key, so raw `GET_KEY` input is only available when no editor is a
 completed line that no `READ_LINE` has collected leaves the editor inactive; keys typed in
 that window go to the raw key queue.
 
+### 5.1 Closing the input source
+
+The host MAY close the input source when nothing more can arrive: a scripted session or pipe
+reaching end of file, or a front end's close gesture. `Machine` uses the package's
+`TextDisplay::close_input()`; the emulator closes it when `--display-input`'s script is
+exhausted (§7), which is how a guest `getchar` loop sees end of input.
+
+Closing:
+
+- ignores later keys and text (the source stays closed until `Machine::reset()`),
+- completes a non-empty editor draft as the final line, so an unterminated last line is still
+  delivered, and cancels an empty draft,
+- leaves an already completed line available to the next `READ_LINE`,
+- makes `READ_LINE` and `GET_KEY` answer `-4` once their queued input is drained,
+- leaves the screen, colours, cursor and click queue alone.
+
+The input source is host state, not a guest command; a guest observes it only through `-4`.
+
 ## 6. Capability and version rule
 
 This is an **ISA 1.x extension, not an ISA 1.0 instruction**. `kr216-isa.md` is frozen at 1.0
@@ -263,10 +292,12 @@ are unaffected:
 - **New host, old image.** The image never executes SYS 5, so nothing changes. An image that
   did execute SYS 5 on an ISA 1.0 host was already trapping; on the new host it now gets a
   device answer. Call numbers 6 and above still trap.
-- **Version field.** `INFO` word 0 is the ABI version, 1 for this document. A new command or a
-  changed block layout takes version 2; a guest MUST compare the version and MUST NOT use a
-  layout it does not know. Adding key codes and cell codes is compatible and does not change
-  the version.
+- **Version field.** `INFO` word 0 is the ABI version, 2 for this document. A new command, a
+  changed block layout or a changed status value takes the next version; a guest MUST compare
+  the version and MUST NOT use a layout or status it does not know. Adding key codes and cell
+  codes is compatible and does not change the version. Version 2 adds `DISPLAY_END_OF_INPUT`
+  and the input-close rule of §5.1; a version 1 guest that reads input must treat any negative
+  answer as "no input", because it has no name for `-4`.
 
 Adoption into the frozen ISA takes the next `kr216-isa.md` revision: record SYS 5 in §13 and
 change "5 and above" to "6 and above" in §15.13, citing this document.
@@ -289,9 +320,33 @@ never traps and always writes a status or result to R2. The command semantics, t
 and the line editor are the package's and are specified in `..\krcompiler\docs\display-abi.md`;
 `tests/display_test.cpp` keeps the SYS-level marshalling evidence.
 
+A host that scripts input registers a callback:
+
+```cpp
+void Machine::set_display_input_refill(std::function<void()> refill);
+```
+
+It runs at the start of every SYS 5 `READ_LINE` and `GET_KEY`, before the command, so it can
+queue text with `display().push_text()` once the poll has armed the editor, and call
+`display().close_input()` when its script is exhausted. A windowed front end does not need it:
+it pushes keys as the user types and closes the source with `close_input()` on its EOF gesture.
+
+The console device is unchanged and is the debug serial port. SYS 1 (`write`) appends to
+`Machine::console_output()` and the `0xFF00` data register does the same; SYS 2 (`read`) and
+`0xFF02` consume `console_input()`. `--console` still makes the emulator read the console from
+stdin, so an interactive debug session keeps working beside the display.
+
 The emulator (`tools/kr216-emu`) does not render the display: it owns a `Machine`, so the
-device answers a guest's calls, but a headless run has no window. The interactive surface is
-the debugger's DISPLAY view (phase 2), which reads the same `TextDisplay`.
+device answers a guest's calls, but a headless run has no window. Two options make a run
+inspectable and scriptable:
+
+| Option | Effect |
+|---|---|
+| `--display-input TEXT` / `--display-inputfile PATH` | queues text for the display line editor, one line at a time, and closes the input source when it is exhausted, so a `getchar` loop reaches EOF |
+| `--display-dump` | after the run, prints `console:` (the debug serial bytes) and `display:` (the screen rows as text) |
+
+The interactive surface is the debugger's DISPLAY view (phase 2), which reads the same
+`TextDisplay`.
 
 ## 8. Guest runtime
 
@@ -299,31 +354,66 @@ the debugger's DISPLAY view (phase 2), which reads the same `TextDisplay`.
 
 | File | Contents |
 |---|---|
-| `sysroot/include/krc/display.h` | the common C API `<krc/display.h>`: statuses, command/key/button codes, `display_*` declarations |
-| `targets/kr216/runtime/syscalls.s` | `__krc_display` trampoline: R7 = 5, `sys`, result in R2 |
+| `sysroot/include/krc/display.h` | the common C API `<krc/display.h>`: statuses (including `DISPLAY_END_OF_INPUT`), command/key/button codes, `display_*` declarations |
+| `targets/kr216/runtime/syscalls.s` | `__krc_display` trampoline: R7 = 5, `sys`, result in R2; `__krc_write` / `__krc_exit` |
 | `targets/kr216/runtime/display.c` | the kr216 wrappers: `display_clear/rows/cols/set_color/get_color/putc/puts/cursor/read_line/get_key/get_click` |
+| `targets/kr216/runtime/libc.c` | stdio over the display (below), `rand`/`srand`, strings and memory, and `__krc_debug_write` for the console |
 
 The common header is staged with the rest of the common sysroot, so `#include <krc/display.h>`
 resolves under `krc --target=kr216`. A program links `display.c` beside the rest of the kr216
 runtime; the wrappers build the 16-bit blocks of §4 and return R2 as-is. `display_read_line`
 NUL-terminates its buffer when the returned length leaves room.
 
+### 8.1 stdio is the display; the console is the debug serial port
+
+| Function | Path |
+|---|---|
+| `putchar`, `puts`, `printf` (all conversions including `%s`) | `DISPLAY_CMD_PUT_CHAR` / `DISPLAY_CMD_PUT_STRING` |
+| `getchar`, `getc`, `getc(stdin)` | `DISPLAY_CMD_READ_LINE` on the host line editor |
+| `__krc_debug_write(buffer, count)`, or SYS 1 directly | the console device (debug serial) |
+
+`getchar` keeps a per-program 256-byte line buffer. It polls `display_read_line` until the
+host has a completed line (`DISPLAY_NOT_READY` means the host is still editing), serves the
+line's bytes followed by `'\n'`, and returns `-1` at end of input: either
+`DISPLAY_END_OF_INPUT` when the host closed the source (§5.1) or a hard display failure. A
+line the host can deliver is at most the editor's capacity and the columns left on its row, so
+it always fits the buffer with room for the terminator.
+
+`rand`/`srand` are the 32-bit LCG KR32 and KR232 use (`1103515245 * state + 12345`, result
+`(state >> 16) & 0x7FFF`), with `sys_random` as the step, so a seeded program answers the same
+sequence on every target.
+
+`__krc_debug_write` is the explicit serial path: it calls `__krc_write(1, ...)` and never goes
+through stdio. printf-style debug output is therefore not available on the console; a program
+that wants both streams keeps its display output in `printf` and its serial output as raw
+bytes.
+
 ## 9. Tests and evidence
 
 - `..\krcompiler`'s unit `tests/unit/test_display_text.cpp`,
   `test_display_surface.cpp` and `test_display_service.cpp` cover the device, the framebuffer
-  core and the dispatcher, including the canonical marshalling.
+  core and the dispatcher, including the canonical marshalling, `close_input()` and the `-4`
+  statuses.
 - `tests/display_test.cpp` (kr216, host) covers the SYS 5 front end: defaults through
   `MachineOptions`, `INFO`, colour round-trips, `PUT_CHAR`/`PUT_STRING` wrapping and control
   codes, the cursor, every bad-block/bad-pointer path, the key and click queues, the line
-  editor, `reset`, and the 16-bit `INFO`/`GET_COLOR`/`GET_CLICK` marshalling.
-- `src216/display.c` is the guest evidence: it calls every wrapper and the raw hypercall under
-  the emulator, checks the documented statuses and exits 42. Its CTest row is `guest_display`
-  (guest rows are opt-in: `-DKR216_BUILD_GUEST_TESTS=ON`).
-- `..\krcompiler`'s `krc_display_link` compiles the runtime and a fixture that calls
-  every wrapper, links the image and checks that the wrapper entry points survive in its
-  symbol payload; `krc_display_package_consumer` installs the build tree into a private prefix
-  and builds a separate CMake project against `find_package(krc-display)`.
+  editor, `reset`, the 16-bit `INFO`/`GET_COLOR`/`GET_CLICK` marshalling, the display input
+  refill (including `-4` when the script is exhausted), and the console/display split.
+- `src216/display.c` is the guest evidence for the raw wrappers: it calls every wrapper and the
+  raw hypercall under the emulator, checks the documented statuses and exits 42. Its CTest row
+  is `guest_display`.
+- `src216/stdio.c` is the stdio evidence: `printf` writes the screen, `getchar`/`getc` read the
+  host-edited lines, `rand` is deterministic, a `getchar` loop reaches EOF when the scripted
+  input is exhausted, and the explicit `__krc_debug_write` text appears only in the console
+  section. Its CTest row is `guest_stdio`.
+- `guest_tictactoe` builds `..\krcompiler\examples\tictactoe.cpp` with the kr216 runtime and no
+  input/PRNG shims, plays a scripted game through the display line editor and exits 0 at EOF.
+- The guest rows are opt-in: `-DKR216_BUILD_GUEST_TESTS=ON`.
+- `..\krcompiler`'s `krc_kr216_display_link` compiles the runtime and a fixture that calls
+  every wrapper and references `getchar`/`rand`/`srand`, links the image and checks that the
+  entry points survive in its symbol payload; `krc_display_package_consumer` installs the
+  build tree into a private prefix and builds a separate CMake project against
+  `find_package(krc-display)`.
 
 ## 10. Deferred
 
@@ -331,7 +421,10 @@ NUL-terminates its buffer when the returned length leaves room.
   codes; today every byte is a code.
 - **Cell readback.** A command that returns cells would let a guest verify its own drawing;
   it would also make the host's screen state part of the guest's observable model.
-- **Interrupts and a WaitingForHost stop state.** v1 stays polled.
+- **Interrupts and a WaitingForHost stop state.** Version 2 stays polled.
+- **Interactive display input in the emulator.** `--display-input` is a script; the emulator
+  does not read the display from the terminal. `--console` remains the console's interactive
+  mode.
 - **Wheel and pointer motion.** Clicks carry a button mask at a cell coordinate only.
 - **Cursor shape and blinking.** The ABI carries position and visibility only; a renderer
   chooses how to draw the cursor.
@@ -342,3 +435,4 @@ NUL-terminates its buffer when the returned length leaves room.
 |---|---|---|
 | 0.1 | 2026-11-27 | First draft: machine model, SYS 5 ABI, command set, line editor, guest runtime, capability rule. |
 | 0.2 | 2026-11-27 | The device moved to KRCompiler's shared `krc::display` package and the guest API to the common `<krc/display.h>`; this document now records the kr216 binding and cross-references `..\krcompiler\docs\display-abi.md`. |
+| 0.3 | 2026-11-27 | Display ABI version 2: `DISPLAY_END_OF_INPUT` (-4) and the host input-close rule (§5.1). stdio (putchar/puts/printf/getchar/getc) is defined on the display and the console becomes the debug serial port; the runtime gains `getchar`/`getc`, `rand`/`srand` and `__krc_debug_write`, and the emulator gains `--display-input`/`--display-dump`. |

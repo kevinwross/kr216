@@ -8,6 +8,7 @@
 #include <cstdint>
 #include <cstdio>
 #include <initializer_list>
+#include <string>
 
 #include "krc/display/display_abi.h"
 #include "kr216/machine.h"
@@ -503,6 +504,62 @@ void test_reset() {
     check(h.read_line() == -2, "READ_LINE arms again after reset");
 }
 
+void test_display_input_refill() {
+    Harness h;
+    const std::string script = "ab\n";
+    std::size_t position = 0;
+    h.machine.set_display_input_refill([&] {
+        if (h.machine.display().line_ready()) {
+            return;
+        }
+        if (position < script.size()) {
+            if (!h.machine.display().editor_active()) {
+                return;  // the poll that arms the editor has not run yet
+            }
+            const std::size_t end = script.find('\n', position);
+            h.machine.display().push_text(script.substr(position, end + 1 - position));
+            position = end + 1;
+            return;
+        }
+        h.machine.display().close_input();
+    });
+    check(h.read_line(8) == -2, "READ_LINE arms the editor before the refill has text");
+    check(h.read_line(8) == 2, "the refill feeds the armed editor");
+    check(h.machine.read_memory(kBuffer) == 'a' &&
+              h.machine.read_memory(static_cast<std::uint16_t>(kBuffer + 1)) == 'b',
+          "the refilled line reaches the guest buffer");
+    check(h.read_line(8) == krc::display::kStatusEndOfInput,
+          "READ_LINE reports end of input once the script is exhausted");
+
+    Harness keyed;
+    keyed.machine.set_display_input_refill([&] { keyed.machine.display().close_input(); });
+    check(keyed.call(static_cast<std::uint16_t>(krc::display::Command::GetKey)) ==
+              krc::display::kStatusEndOfInput,
+          "GET_KEY reports end of input when the host closed the display input");
+}
+
+void test_console_remains_the_debug_serial() {
+    Harness h;
+    const char text[] = "dbg";
+    for (std::uint16_t offset = 0; offset < 3; ++offset) {
+        h.machine.write_memory(static_cast<std::uint16_t>(kString + offset),
+                               static_cast<std::uint8_t>(text[offset]));
+    }
+    h.machine.state().r[14] = kBase;
+    h.machine.state().r[7] = 1;  // SYS 1: write(fd, address, length)
+    h.machine.state().r[3] = kString;
+    h.machine.state().r[4] = 3;
+    check(h.machine.step() == kr216::StopReason::Running, "SYS write steps");
+    check(h.machine.console_output() == "dbg", "SYS write reaches the console");
+    check(h.code(0, 0) == 0, "a console write does not touch the display");
+
+    h.words(kBlock, {0x41});
+    check(h.call(static_cast<std::uint16_t>(krc::display::Command::PutChar), kBlock, 2) == 0,
+          "PUT_CHAR succeeds beside the console");
+    check(h.code(0, 0) == 0x41, "a display write reaches the display");
+    check(h.machine.console_output() == "dbg", "a display write does not touch the console");
+}
+
 }  // namespace
 
 int main() {
@@ -518,6 +575,8 @@ int main() {
     test_line_editing();
     test_line_editor_position_and_capacity();
     test_reset();
+    test_display_input_refill();
+    test_console_remains_the_debug_serial();
 
     if (failures != 0) {
         std::fprintf(stderr, "display_test: %d failure(s)\n", failures);

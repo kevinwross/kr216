@@ -103,6 +103,10 @@ void Machine::set_console_output_sink(std::function<void(char)> sink) {
     console_sink_ = std::move(sink);
 }
 
+void Machine::set_display_input_refill(std::function<void()> refill) {
+    display_refill_ = std::move(refill);
+}
+
 void Machine::console_put(char byte) {
     console_output_.push_back(byte);
     if (console_sink_) {
@@ -621,6 +625,14 @@ void Machine::do_display_sys() {
     if (block_bytes != 0 && (length != block_bytes || !guest_range_valid(block, block_bytes))) {
         finish(krc::display::kStatusBadArgument);
         return;
+    }
+
+    // A scripted host feeds the line editor here, once the poll has armed it; the command then
+    // observes the line the callback queued (or the closed input source it set up).
+    if ((command == krc::display::Command::ReadLine ||
+         command == krc::display::Command::GetKey) &&
+        display_refill_) {
+        display_refill_();
     }
 
     const auto word = [this](std::uint16_t address) { return read_memory_word(address); };

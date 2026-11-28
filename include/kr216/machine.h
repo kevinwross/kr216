@@ -99,10 +99,19 @@ public:
     [[nodiscard]] const std::string& debug_output() const noexcept { return debug_output_; }
     void set_time(std::uint32_t seconds) noexcept { time_ = seconds; }
 
-    // The host text display behind SYS 5, from the shared krc::display package. A front end
-    // renders it; the emulator itself does not draw. The display resets with the machine.
+    // The host text display behind SYS 5, from the shared krc::display package. It is the
+    // program's stdin/stdout: the C runtime's putchar/puts/printf write it and getchar/getc
+    // read its host line editor. A front end renders it; the emulator itself does not draw.
+    // The console above is the debug serial port, not stdio. The display resets with the
+    // machine.
     [[nodiscard]] krc::display::TextDisplay& display() noexcept { return display_; }
     [[nodiscard]] const krc::display::TextDisplay& display() const noexcept { return display_; }
+
+    // Called at the start of every SYS 5 READ_LINE and GET_KEY, before the command runs. A
+    // host that scripts display input uses it to queue text once the line editor is armed (or
+    // to close the input source when its script is exhausted); a windowed front end does not
+    // need it. The callback may use display() but must not re-enter the machine.
+    void set_display_input_refill(std::function<void()> refill);
 
 private:
     // Checked byte access: MMIO dispatch, null-page and reserved-window traps.
@@ -183,6 +192,7 @@ private:
     std::uint16_t timer_compare_ = 0;
     std::uint16_t timer_control_ = 0;
     krc::display::TextDisplay display_;
+    std::function<void()> display_refill_;
 };
 
 }  // namespace kr216

@@ -13,6 +13,11 @@ endif()
 
 enable_testing()
 
+# The host text display is the shared krc::display package, installed by KRCompiler; this
+# repository does not carry a copy of it (docs/display-abi.md). A configure without the
+# package fails here rather than at link time.
+find_package(krc-display CONFIG REQUIRED)
+
 # src/ is host code, built by the host toolchain. src216/ is guest code, compiled by
 # `krc --target=kr216`, and is deliberately not part of this build: the boundary is which
 # compiler builds the tree (AGENTS.local.md, architecture boundaries).

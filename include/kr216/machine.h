@@ -6,6 +6,8 @@
 #include <string>
 
 #include "kr216/encoding.h"
+#include "krc/display/display_abi.h"
+#include "krc/display/text_display.h"
 
 namespace kr216 {
 
@@ -21,6 +23,16 @@ enum class TrapCode : std::uint8_t {
     AddressError = 4,
 };
 
+// Construction options for the devices the machine owns. The defaults are the reference
+// configuration: an 80x30 text display, white on black (krc::display's defaults,
+// docs/display-abi.md).
+struct MachineOptions {
+    std::uint16_t display_rows = krc::display::kDefaultRows;
+    std::uint16_t display_cols = krc::display::kDefaultCols;
+    std::uint32_t display_foreground = krc::display::kDefaultForeground;
+    std::uint32_t display_background = krc::display::kDefaultBackground;
+};
+
 struct CpuState {
     std::uint16_t r[16] = {};   // R0/R1 read as constants; R11 flags, R12 EFP, R13 FP, R14 PC, R15 SP
     std::uint64_t f[4] = {};    // F0-F3 as binary64 bit patterns
@@ -29,7 +41,8 @@ struct CpuState {
 };
 
 // The reference machine. It owns the 64 KiB memory, the registers, the trap machinery, the
-// console and the timer; it is the VM behind `kr216` and the debugger interface.
+// console, the text display and the timer; it is the VM behind `kr216` and the debugger
+// interface.
 class Machine {
 public:
     static constexpr std::size_t kMemorySize = 0x10000;
@@ -38,9 +51,12 @@ public:
     static constexpr std::uint16_t kConsoleStatus = 0xFF04;
 
     Machine();
+    explicit Machine(const MachineOptions& options);
 
     // The reset state of kr216-isa.md section 2.4: PC from the word at 0x0100, SP = 0xFEF0,
-    // FP and EFP zero, flags zero, other registers and F0-F3 undefined (cleared here).
+    // FP and EFP zero, flags zero, other registers and F0-F3 undefined (cleared here). The
+    // devices reset with the CPU: the text display returns to its construction geometry and
+    // colours, and the console's read position is rewound.
     void reset();
 
     // Runs at most `max_instructions`; returns why it stopped. `Running` means the budget ran
@@ -82,6 +98,11 @@ public:
     [[nodiscard]] const std::string& console_output() const noexcept { return console_output_; }
     [[nodiscard]] const std::string& debug_output() const noexcept { return debug_output_; }
     void set_time(std::uint32_t seconds) noexcept { time_ = seconds; }
+
+    // The host text display behind SYS 5, from the shared krc::display package. A front end
+    // renders it; the emulator itself does not draw. The display resets with the machine.
+    [[nodiscard]] krc::display::TextDisplay& display() noexcept { return display_; }
+    [[nodiscard]] const krc::display::TextDisplay& display() const noexcept { return display_; }
 
 private:
     // Checked byte access: MMIO dispatch, null-page and reserved-window traps.
@@ -128,6 +149,13 @@ private:
     bool push_mask(std::uint16_t mask);
     bool pop_mask(std::uint16_t mask);
     bool do_sys();
+    // SYS 5, the display hypercall of kr216-display.md. Never raises a trap: an unknown
+    // command or an invalid guest pointer is reported through the status in R2.
+    void do_display_sys();
+    // A guest data range is 0x0100-0xFEFF: the null page and the I/O/reserved windows are
+    // rejected rather than allowed to fault. A zero length touches nothing and is valid.
+    [[nodiscard]] bool guest_range_valid(std::uint16_t address,
+                                         std::uint16_t length) const noexcept;
     void console_put(char byte);
 
     // FPU helpers over the binary64 bit patterns.
@@ -154,6 +182,7 @@ private:
     std::uint16_t timer_counter_ = 0;
     std::uint16_t timer_compare_ = 0;
     std::uint16_t timer_control_ = 0;
+    krc::display::TextDisplay display_;
 };
 
 }  // namespace kr216

@@ -16,6 +16,7 @@ target_include_directories(kr216_core PUBLIC
 add_library(kr216::core ALIAS kr216_core)
 set_target_properties(kr216_core PROPERTIES EXPORT_NAME core)
 target_compile_features(kr216_core PUBLIC cxx_std_20)
+target_link_libraries(kr216_core PUBLIC krc::display)
 option(KR216_INSTALL "Install kr216::core and its headers for other trees" OFF)
 if(KR216_INSTALL)
     install(TARGETS kr216_core EXPORT kr216Targets

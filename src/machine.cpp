@@ -3,6 +3,8 @@
 #include <cmath>
 #include <cstring>
 
+#include "krc/display/display_service.h"
+
 namespace kr216 {
 namespace {
 
@@ -34,7 +36,13 @@ std::uint16_t sign_extend8(std::uint8_t value) noexcept {
 
 }  // namespace
 
-Machine::Machine() { reset(); }
+Machine::Machine() : Machine(MachineOptions{}) {}
+
+Machine::Machine(const MachineOptions& options)
+    : display_(options.display_rows, options.display_cols, options.display_foreground,
+               options.display_background) {
+    reset();
+}
 
 void Machine::reset() {
     state_ = CpuState{};
@@ -47,6 +55,7 @@ void Machine::reset() {
     timer_counter_ = 0;
     timer_compare_ = 0;
     timer_control_ = 0;
+    display_.reset();
     // The reset vector is the word at 0x0100 (ISA 2.4); read it raw, since it is not a trap.
     state_.r[14] = read_memory_word(0x0100);
     state_.r[15] = 0xFEF0;
@@ -512,12 +521,176 @@ bool Machine::do_sys() {
         reg_write(2, 0);
         return true;
     }
+    case 5:  // display hypercall (kr216-display.md)
+        do_display_sys();
+        return true;
     default:
         raise_trap(TrapCode::IllegalOperand, current_pc_);
         return false;
     }
 }
 
+// ---- SYS 5: host text display ------------------------------------------------------
+
+namespace {
+
+// The krc::display memory view over the machine's 64 KiB. The display service validates guest
+// buffers through this, so the SYS front end never touches a trap-checked or MMIO accessor.
+class MachineDisplayMemory final : public krc::display::DisplayMemory {
+public:
+    explicit MachineDisplayMemory(Machine& machine) : machine_(machine) {}
+
+    [[nodiscard]] std::uint32_t size() const override {
+        return static_cast<std::uint32_t>(Machine::kMemorySize);
+    }
+
+    [[nodiscard]] bool valid_range(std::uint32_t address, std::uint32_t length) const override {
+        if (length == 0) return true;
+        if (address <= kNullPageEnd) return false;
+        return static_cast<std::uint64_t>(address) + length <= kIoBase;
+    }
+
+    bool read(std::uint32_t address, std::uint8_t* destination, std::uint32_t length) override {
+        if (!valid_range(address, length)) return false;
+        for (std::uint32_t offset = 0; offset < length; ++offset) {
+            destination[offset] =
+                machine_.read_memory(static_cast<std::uint16_t>(address + offset));
+        }
+        return true;
+    }
+
+    bool write(std::uint32_t address, const std::uint8_t* source, std::uint32_t length) override {
+        if (!valid_range(address, length)) return false;
+        for (std::uint32_t offset = 0; offset < length; ++offset) {
+            machine_.write_memory(static_cast<std::uint16_t>(address + offset), source[offset]);
+        }
+        return true;
+    }
+
+private:
+    Machine& machine_;
+};
+
+}  // namespace
+
+bool Machine::guest_range_valid(std::uint16_t address, std::uint16_t length) const noexcept {
+    if (length == 0) return true;
+    if (address <= kNullPageEnd) return false;
+    const std::uint32_t end = static_cast<std::uint32_t>(address) + length;
+    return end <= static_cast<std::uint32_t>(kIoBase);
+}
+
+void Machine::do_display_sys() {
+    const std::uint16_t command_number = reg_read(2);
+    const std::uint16_t block = reg_read(3);
+    const std::uint16_t length = reg_read(4);
+    const auto finish = [this](std::int32_t result) {
+        reg_write(2, static_cast<std::uint16_t>(result));
+    };
+    const auto command = static_cast<krc::display::Command>(command_number);
+
+    // The 16-bit guest layout is kr216's marshalling of the canonical 32-bit block
+    // (kr216-display.md section 4): a block is the number of 16-bit words its canonical form
+    // has, except the two colour words, which each split into a low and a high word.
+    std::uint16_t block_bytes = 0;
+    switch (command) {
+    case krc::display::Command::Info:
+    case krc::display::Command::SetColor:
+    case krc::display::Command::GetColor:
+        block_bytes = 8;
+        break;
+    case krc::display::Command::Clear:
+    case krc::display::Command::GetKey:
+        block_bytes = 0;
+        break;
+    case krc::display::Command::PutChar:
+        block_bytes = 2;
+        break;
+    case krc::display::Command::PutString:
+    case krc::display::Command::ReadLine:
+        block_bytes = 4;
+        break;
+    case krc::display::Command::Cursor:
+    case krc::display::Command::GetClick:
+        block_bytes = 6;
+        break;
+    default:
+        finish(krc::display::kStatusUnknownCommand);
+        return;
+    }
+    if (block_bytes != 0 && (length != block_bytes || !guest_range_valid(block, block_bytes))) {
+        finish(krc::display::kStatusBadArgument);
+        return;
+    }
+
+    const auto word = [this](std::uint16_t address) { return read_memory_word(address); };
+    const auto word32 = [&word](std::uint16_t address) {
+        return static_cast<std::uint32_t>(word(address)) |
+               (static_cast<std::uint32_t>(word(static_cast<std::uint16_t>(address + 2))) << 16);
+    };
+    std::uint32_t words[krc::display::kCanonicalWords] = {};
+    switch (command) {
+    case krc::display::Command::SetColor:
+        words[0] = word32(block);
+        words[1] = word32(static_cast<std::uint16_t>(block + 4));
+        break;
+    case krc::display::Command::PutChar:
+        words[0] = word(block);
+        break;
+    case krc::display::Command::PutString:
+        words[0] = word(block);
+        words[1] = word(static_cast<std::uint16_t>(block + 2));
+        break;
+    case krc::display::Command::Cursor:
+        words[0] = word(block);
+        words[1] = word(static_cast<std::uint16_t>(block + 2));
+        words[2] = word(static_cast<std::uint16_t>(block + 4));
+        break;
+    case krc::display::Command::ReadLine:
+        words[0] = word(block);
+        words[1] = word(static_cast<std::uint16_t>(block + 2));
+        break;
+    default:
+        break;
+    }
+
+    MachineDisplayMemory memory(*this);
+    const std::int32_t result = krc::display::DisplayService::execute(
+        display_, memory, command, words,
+        krc::display::DisplayService::required_words(command));
+    if (result >= 0) {
+        switch (command) {
+        case krc::display::Command::Info:
+            write_memory_word(block, static_cast<std::uint16_t>(words[0]));
+            write_memory_word(static_cast<std::uint16_t>(block + 2),
+                              static_cast<std::uint16_t>(words[1]));
+            write_memory_word(static_cast<std::uint16_t>(block + 4),
+                              static_cast<std::uint16_t>(words[2]));
+            write_memory_word(static_cast<std::uint16_t>(block + 6),
+                              static_cast<std::uint16_t>(words[3]));
+            break;
+        case krc::display::Command::GetColor:
+            write_memory_word(block, static_cast<std::uint16_t>(words[0] & 0xFFFFu));
+            write_memory_word(static_cast<std::uint16_t>(block + 2),
+                              static_cast<std::uint16_t>(words[0] >> 16));
+            write_memory_word(static_cast<std::uint16_t>(block + 4),
+                              static_cast<std::uint16_t>(words[1] & 0xFFFFu));
+            write_memory_word(static_cast<std::uint16_t>(block + 6),
+                              static_cast<std::uint16_t>(words[1] >> 16));
+            break;
+        case krc::display::Command::GetClick:
+            write_memory_word(block, static_cast<std::uint16_t>(words[0]));
+            write_memory_word(static_cast<std::uint16_t>(block + 2),
+                              static_cast<std::uint16_t>(words[1]));
+            write_memory_word(static_cast<std::uint16_t>(block + 4),
+                              static_cast<std::uint16_t>(words[2]));
+            break;
+        default:
+            break;
+        }
+    }
+    finish(result);
+}
 // ---- execution ---------------------------------------------------------------------
 
 StopReason Machine::run(std::size_t max_instructions) {

@@ -21,6 +21,7 @@ Copy-Item (Join-Path $runtime 'crt0.s') (Join-Path $out 'runtime\crt0.s')
 Copy-Item (Join-Path $runtime 'syscalls.s') (Join-Path $out 'runtime\syscalls.s')
 Copy-Item (Join-Path $runtime 'eh.s') (Join-Path $out 'runtime\eh.s')
 Copy-Item (Join-Path $runtime 'libc.c') (Join-Path $out 'runtime\libc.c')
+Copy-Item (Join-Path $runtime 'display.c') (Join-Path $out 'runtime\display.c')
 
 $stage = Join-Path $compiler "build\$preset\stage\sysroot"
 Copy-Item $stage (Join-Path $out 'sysroot') -Recurse

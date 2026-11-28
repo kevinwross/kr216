@@ -10,6 +10,10 @@ add_executable(machine_test machine_test.cpp)
 target_link_libraries(machine_test PRIVATE kr216_core)
 add_test(NAME machine COMMAND machine_test)
 
+add_executable(display_test display_test.cpp)
+target_link_libraries(display_test PRIVATE kr216_core)
+add_test(NAME display COMMAND display_test)
+
 add_executable(image_test image_test.cpp)
 target_link_libraries(image_test PRIVATE kr216_core)
 add_test(NAME image COMMAND image_test)
@@ -163,6 +167,18 @@ if(KR216_BUILD_GUEST_TESTS)
         "${CMAKE_SOURCE_DIR}/src216/cpp_exception_object.cpp" 42 "")
     add_guest_program_test(guest_signed_div
         "${CMAKE_SOURCE_DIR}/src216/signed_div.c" 42 "")
+    add_test(NAME guest_display
+        COMMAND ${CMAKE_COMMAND}
+                "-DKRC=${KRG_KRC}"
+                "-DKRLD=${KRG_KRLD}"
+                "-DEMU=$<TARGET_FILE:kr216_emu>"
+                "-DSOURCE_ROOT=${CMAKE_SOURCE_DIR}"
+                "-DSOURCE=${CMAKE_SOURCE_DIR}/src216/display.c"
+                "-DEXTRA_SOURCE=${CMAKE_SOURCE_DIR}/../krcompiler/targets/kr216/runtime/display.c"
+                "-DWORK=${CMAKE_CURRENT_BINARY_DIR}/guest_display"
+                "-DEXPECT_EXIT=42"
+                "-DEXPECT_OUTPUT=display ok"
+                -P ${CMAKE_SOURCE_DIR}/cmake/BuildGuestProgram.cmake)
     add_test(NAME guest_init_array
         COMMAND ${CMAKE_COMMAND}
                 "-DKRC=${KRG_KRC}"
